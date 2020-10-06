@@ -3,7 +3,7 @@ import pytest
 
 from beamngpy import BeamNGpy, Scenario, Vehicle, setup_logging
 from beamngpy.beamngcommon import BNGValueError, BNGError
-from beamngpy.sensors import Camera, Lidar, Damage, Electrics, GForces
+from beamngpy.sensors import Camera, Lidar, Damage, Electrics, GForces, Ultrasonic
 
 
 @pytest.fixture()
@@ -37,6 +37,8 @@ def test_camera(beamng):
 
     with beamng as bng:
         bng.load_scenario(scenario)
+        bng.start_scenario()
+        bng.pause()
         bng.step(120)
 
         sensors = bng.poll_sensors(vehicle)
@@ -145,3 +147,30 @@ def test_damage(beamng):
         sensors = bng.poll_sensors(vehicle)
 
     assert sensors['damage']['damage'] > 100
+
+def test_ultrasonic(beamng):
+    setup_logging()
+    scenario = Scenario('west_coast_usa', 'ultrasonic_test')
+    vehicle = Vehicle('test_car', model='etk800')
+
+    ultrasonic = Ultrasonic()
+    vehicle.attach_sensor('ultrasonic', ultrasonic)
+
+    scenario.add_vehicle(vehicle, 
+                        pos=(-704.033386,543.973389,119.914429),
+                        rot_quat=(-0.0276786629,0.0133276731,-0.471107692,0.881540596))
+    scenario.make(beamng)
+
+    with beamng as bng:
+        bng.load_scenario(scenario)
+        bng.start_scenario()
+        bng.pause()
+        bng.step(120)
+
+        sensors = bng.poll_sensors(vehicle)
+
+    assert sensors['ultrasonic']['distance'] > 0
+
+if __name__ == "__main__":
+    bng = BeamNGpy('localhost', 64256)
+    test_ultrasonic(bng)

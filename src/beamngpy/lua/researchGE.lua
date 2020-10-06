@@ -461,6 +461,20 @@ sensors.Timer = function(req, callback)
   callback({time = scenario_scenarios.getScenario().timer})
 end
 
+sensors.Ultrasonic = function(req, callback)
+  local pos = req['pos']
+  pos = vec3(pos[1], pos[2], pos[3])
+  local rot = req['rot']
+  rot = QuatF(rot[1], rot[1], rot[3], rot[4])
+  local fov = math.rad(req['fov'])
+  local resolution = req['resolution']
+  resolution = Point2F(resolution[1], resolution[2])
+  local near_far = req['near_far'] 
+  near_far = Point2F(near_far[1], near_far[2])
+  local distance = Engine.testUltrasonic(pos, rot, resolution, fov, near_far)
+  callback(distance)
+end
+
 local function getSensorData(request, callback)
   local response, sensor_type, handler
   sensor_type = request['type']
@@ -471,6 +485,8 @@ local function getSensorData(request, callback)
     callback(nil)
   end
 end
+
+
 
 local function getNextSensorData(requests, response, callback)
   local key = next(requests)
