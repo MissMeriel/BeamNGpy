@@ -23,7 +23,7 @@ def main():
     random.seed(1703)
     setup_logging()
 
-    beamng = BeamNGpy('localhost', 64256)
+    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
 
     scenario = Scenario('west_coast_usa', 'lidar_demo',
                         description='Spanning the map with a lidar sensor')

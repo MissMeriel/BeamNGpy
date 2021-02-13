@@ -8,11 +8,13 @@ local function log(level, msg)
 end
 
 local function handleFoo(skt, msg)
-    log("I", "Hello " .. msg['someName'] .. '!\n')
+    print("Hello " .. msg['someName'] .. '!\n')
     rcom.sendACK(skt, 'Goodbye!')
 end
 
 local function onSocketMessage(skt, msg)
+    log("D", "onSocketMessage")
+    dump(msg)
     local msgType = 'handle' .. msg['type']
     local handler = M[msgType]
     if handler ~= nil then

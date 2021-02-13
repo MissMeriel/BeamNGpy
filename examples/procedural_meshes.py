@@ -14,7 +14,7 @@ from beamngpy import ProceduralCylinder, ProceduralCone, ProceduralCube, Procedu
 
 
 def main():
-    beamng = BeamNGpy('localhost', 64256)
+    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.0')
 
     scenario = Scenario('smallgrid', 'mesh_test')
 

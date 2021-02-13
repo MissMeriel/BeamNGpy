@@ -18,7 +18,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.pyplot import imshow
 
-from beamngpy import BeamNGpy, Scenario, Vehicle, setup_logging
+from beamngpy import BeamNGpy, Scenario, Vehicle, setup_logging, Config
 from beamngpy.sensors import Camera, GForces, Lidar, Electrics, Damage, Timer
 
 
@@ -40,7 +40,7 @@ def main():
 
     plt.ion()
 
-    beamng = BeamNGpy('localhost', 64256)
+    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
 
     # Create a scenario in west_coast_usa
     scenario = Scenario('west_coast_usa', 'research_test',
@@ -99,20 +99,32 @@ def main():
 
         assert vehicle.skt
 
+        config = Config()
+        cfg_file = '{}\\config.json'.format(beamng.home)
+        print(cfg_file)
+
         # Send random inputs to vehice and advance the simulation 20 steps
-        for _ in range(1024):
+        #for _ in range(1024):
+        for _ in range(2):
             throttle = random.uniform(0.0, 1.0)
             steering = random.uniform(-1.0, 1.0)
             brake = random.choice([0, 0, 0, 1])
             vehicle.control(throttle=throttle, steering=steering, brake=brake)
 
             bng.step(20)
+            print("Stepped forward 20 steps")
+            print("vehicle.state : {}".format(vehicle.state))
+            config.update(vehicle.state)
+
+            print("config.keys: {}".format(config.keys()))
+            config.save(cfg_file=cfg_file)
 
             # Retrieve sensor data and show the camera data.
             sensors = bng.poll_sensors(vehicle)
 
-            print('{} seconds passed.'.format(sensors['timer']['time']))
-
+            print('\n{} seconds passed.'.format(sensors['timer']['time']))
+            #for s in sensors.keys():
+            #    print("{} : {}".format(s, sensors[s]))
             a_colour.imshow(sensors['front_cam']['colour'].convert('RGB'))
             a_depth.imshow(sensors['front_cam']['depth'].convert('L'))
             a_annot.imshow(sensors['front_cam']['annotation'].convert('RGB'))
@@ -122,9 +134,12 @@ def main():
             b_annot.imshow(sensors['back_cam']['annotation'].convert('RGB'))
 
             plt.pause(0.00001)
+
     finally:
         bng.close()
-
+    cfg_file = '{}\\config.json'.format(beamng.home)
+    print(cfg_file)
+    config.save(cfg_file)
 
 if __name__ == '__main__':
     main()

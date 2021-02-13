@@ -28,10 +28,12 @@ from DAVE2 import Model
 
 
 # globals
-default_model = 'pickup'
-default_scenario = 'automation_test_track' #'west_coast_usa' #'cliff' # smallgrid
+training_dir = 'training_images_hirochi6'
+default_model = 'etk800' #'pickup'
+default_scenario = 'automation_test_track'
 dt = 20
-base_filename = '{}/training_images/{}_{}_'.format(os.getcwd(), default_model, default_scenario.replace("_", ""))
+#base_filename = '{}/{}/{}_{}_'.format(os.getcwd(), training_dir, default_model, default_scenario.replace("_", ""))
+base_filename = 'G:/{}/{}_{}_'.format(training_dir, default_model, default_scenario.replace("_", ""))
 
 def spawn_point(scenario_locale):
     if scenario_locale == 'cliff':
@@ -51,17 +53,16 @@ def spawn_point(scenario_locale):
         # handling circuit
         #return {'pos': (-294.031, 10.4074, 118.518), 'rot': None, 'rot_quat': (0, 0, 0.708103, 0.706109)}
         # rally track
-        #return {'pos': (-374.835, 84.8178, 115.084), 'rot': None, 'rot_quat': (0, 0, 0.718422, 0.695607)}
-        # highway
-        return {'pos': (-294.791, -255.693, 118.703), 'rot': None, 'rot_quat': (0, 0, -0.704635, 0.70957)}
+        return {'pos': (-374.835, 84.8178, 115.084), 'rot': None, 'rot_quat': (0, 0, 0.718422, 0.695607)}
+        # highway (open, farm-like)
+        #return {'pos': (-294.791, -255.693, 118.703), 'rot': None, 'rot_quat': (0, 0, -0.704635, 0.70957)}
         # default
         #return {'pos': (487.25, 178.73, 131.928), 'rot': None, 'rot_quat': (0, 0, -0.702719, 0.711467)}
-
 
 def setup_sensors(vehicle):
     # Set up sensors
     pos = (-0.3, 1, 1.0)
-    direction = (0, 1, 0)
+    direction = (0, 0.75, 0) #(0,1,0)
     fov = 120
     resolution = (512, 512)
     front_camera = Camera(pos, direction, fov, resolution,
@@ -94,10 +95,10 @@ def load_vehicle(vehicle_json):
 
 def main():
     global base_filename, default_model, default_scenario
-    vehicle_loadfile = 'vehicles/pickup/poppedtires.save.json'
+    #vehicle_loadfile = 'vehicles/pickup/pristine.save.json'
     # setup DNN model + weights
     m = Model()
-    model = m.define_model_BeamNG()
+    model = m.define_model_BeamNG("BeamNGmodel-2.h5")
 
     random.seed(1703)
     setup_logging()
@@ -126,7 +127,7 @@ def main():
 
     #vehicle.ai_set_mode('span')
     #vehicle.ai_drive_in_lane(True)
-    vehicle.load(vehicle_loadfile)
+    #vehicle.load(vehicle_loadfile)
     # Put simulator in pause awaiting further inputs
     #bng.pause()
     assert vehicle.skt
@@ -139,9 +140,9 @@ def main():
         prediction = model.predict(img)
 
         # control params
-        throttle = 1.0 #random.uniform(0.0, 1.0)
+        throttle = 0.2 # random.uniform(0.0, 1.0)
         steering = float(prediction[0][0]) #random.uniform(-1.0, 1.0)
-        brake = 0 #random.choice([0, 0, 0, 1])
+        brake = random.choice([0, 0, 0.1 , 0.2])
 
         vehicle.control(throttle=throttle, steering=steering, brake=brake)
 
@@ -153,7 +154,8 @@ def main():
         print("AI steering_input: {}".format(steering_input))
         #print("avg_wheel_av: {}".format(avg_wheel_av))
         print("DAVE2 steering prediction: {}".format(float(prediction[0][0])))
-        bng.step(20)
+        #bng.step(20)
+        bng.step(5)
 
     bng.close()
 

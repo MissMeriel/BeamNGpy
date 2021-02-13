@@ -25,11 +25,12 @@ import cv2
 import scipy.misc
 
 # globals
-training_dir = 'training_images_hirochi4'
+training_dir = 'training_images_hirochi6'
 default_model = 'etk800' #'pickup'
-default_scenario = 'hirochi_raceway' #'utah' #'automation_test_track' #'west_coast_usa' #'cliff' # smallgrid
+default_scenario = 'utah' #'hirochi_raceway' #'utah' #'automation_test_track' #'west_coast_usa' #'cliff' # smallgrid
 dt = 20
-base_filename = '{}/{}/{}_{}_'.format(os.getcwd(), training_dir, default_model, default_scenario.replace("_", ""))
+#base_filename = '{}/{}/{}_{}_'.format(os.getcwd(), training_dir, default_model, default_scenario.replace("_", ""))
+base_filename = 'G:/{}/{}_{}_'.format(training_dir, default_model, default_scenario.replace("_", ""))
 
 def spawn_point(scenario_locale):
     if scenario_locale is 'cliff':
@@ -56,22 +57,23 @@ def spawn_point(scenario_locale):
         #return {'pos': (487.25, 178.73, 131.928), 'rot': None, 'rot_quat': (0, 0, -0.702719, 0.711467)}
     elif scenario_locale == 'hirochi_raceway':
         # figure 8 oval
-        #return {'pos': (181.513, 4.62607, 20.6226), 'rot': None, 'rot_quat': (0, 0, 0.432016, 0.901866)}
+        return {'pos': (181.513, 4.62607, 20.6226), 'rot': None, 'rot_quat': (0, 0, 0.432016, 0.901866)}
         # pit lane
-        return {'pos': (-457.309, 373.546, 25.3623), 'rot': None, 'rot_quat': (0, 0, -0.277698, 0.960669)}
+        #return {'pos': (-457.309, 373.546, 25.3623), 'rot': None, 'rot_quat': (0, 0, -0.277698, 0.960669)}
         # paddock
         #return {'pos': (-256.046, 273.232, 25.1961), 'rot': None, 'rot_quat': (0, 0, 0.741246, 0.671234)}
         # starting line (done in traffic mode)
         #return {'pos': (-408.48, 260.232, 25.4231), 'rot': None, 'rot_quat': (0, 0, -0.279907, 0.960027)}
         # rock crawling course
         #return {'pos': (-179.674, -50.6751, 27.6237), 'rot': None, 'rot_quat': (0.0734581, 0.00305369, 0.0414223, 0.996433)}
+        #return {'pos': (-183.674, -38.6751, 25.6237), 'rot': None, 'rot_quat': (0.0734581, 0.0305369, 0.0414223, 0.996433)}
         # default
         #return {'pos': (-453.309, 373.546, 25.3623), 'rot': None, 'rot_quat': (0, 0, -0.277698, 0.960669)}
     elif scenario_locale == 'utah':
         # west highway
-        return {'pos': (-922.158, -929.868, 135.534), 'rot': None, 'rot_quat': (0, 0, -0.820165, 0.572127)}
+        #return {'pos': (-922.158, -929.868, 135.534), 'rot': None, 'rot_quat': (0, 0, -0.820165, 0.572127)}
         # building site
-        #return {'pos': (-910.372, 607.927, 265.059), 'rot': None, 'rot_quat': (0, 0, 0.913368, -0.407135)}
+        return {'pos': (-910.372, 607.927, 265.059), 'rot': None, 'rot_quat': (0, 0, 0.913368, -0.407135)}
         # tourist area
         #return {'pos': (-528.44, 283.886, 298.365), 'rot': None, 'rot_quat': (0, 0, 0.77543, 0.631434)}
         # auto repair zone
@@ -115,7 +117,8 @@ def setup_sensors(vehicle):
     return vehicle
 
 def setup_dir(training_dir):
-    d = "{}/{}".format(os.path.dirname(os.path.realpath(__file__)), training_dir)
+    #d = "{}/{}".format(os.path.dirname(os.path.realpath(__file__)), training_dir)
+    d = "G:/{}".format( training_dir)
     if not os.path.isdir(d):
         os.mkdir(d)
     return "{}/data.csv".format(d)

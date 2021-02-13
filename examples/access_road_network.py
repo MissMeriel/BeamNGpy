@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from beamngpy import BeamNGpy, Vehicle, Scenario
 
 
-beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.0')
+beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
 
 scenario = Scenario('west_coast_usa', 'road_map_example')
 orig = (568.908386, 13.4217358,  148.56546)

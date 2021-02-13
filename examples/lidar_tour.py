@@ -47,7 +47,9 @@ def open_window(width, height):
 def main():
     setup_logging()
 
-    beamng = BeamNGpy('localhost', 64256)
+    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
+    #beamng.change_setting('research', True)
+
     scenario = Scenario('west_coast_usa', 'lidar_tour',
                         description='Tour through the west coast gathering '
                                     'Lidar data')
@@ -55,13 +57,19 @@ def main():
     vehicle = Vehicle('ego_vehicle', model='etk800', licence='LIDAR')
     lidar = Lidar()
     vehicle.attach_sensor('lidar', lidar)
-
+    #beamng.open_lidar('lidar', vehicle, 'shmem', 8000)
     scenario.add_vehicle(vehicle, pos=(-717.121, 101, 118.675), rot=None, rot_quat=(0, 0, 0.3826834, 0.9238795))
+    print(scenario.options)
+    print(scenario.get_info_path())
+
     scenario.make(beamng)
 
     bng = beamng.open(launch=True)
+
+    bng.open_lidar('lidar', vehicle, 'shmem', 8000)
+    lidar.connect(bng, vehicle)
     try:
-        bng.load_scenario(scenario)
+        bng.load_scenario(scenario)     # this is where the error happens
 
         window = open_window(SIZE, SIZE)
         lidar_vis = LidarVisualiser(Lidar.max_points)
@@ -87,6 +95,8 @@ def main():
         glutReshapeFunc(lidar_resize)
         glutIdleFunc(update)
         glutMainLoop()
+    except Exception as e:
+        print(e)
     finally:
         bng.close()
 

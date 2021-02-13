@@ -7,7 +7,7 @@ from beamngpy import BeamNGpy, Scenario, Vehicle
 
 
 def main():
-    beamng = BeamNGpy('localhost', 64256)
+    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.0')
 
     with beamng as bng:
         bng.change_setting('GraphicDisplayModes', 'Fullscreen')

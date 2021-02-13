@@ -13,7 +13,7 @@ from beamngpy import BeamNGpy, Scenario, Road, Vehicle, setup_logging
 
 
 def main():
-    beamng = BeamNGpy('localhost', 64256)
+    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.0')
 
     scenario = Scenario('GridMap', 'road_test')
     road_a = Road('track_editor_C_center', rid='circle_road', looped=True)
