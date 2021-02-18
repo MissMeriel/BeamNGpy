@@ -159,6 +159,7 @@ M.onScenarioRestarted = function()
 end
 
 M.onInit = function()
+  log("E", "researchGE", "onINIT")
   local cmdArgs = Engine.getStartingArgs()
   for i, v in ipairs(cmdArgs) do
     if v == "-rport" then
@@ -625,11 +626,11 @@ local function getVehicleState(vid)
 end
 
 M.handleUpdateScenario = function(msg)
+  -- log("E", "handleUpdateScenario", "sending message to get scenario state (i.e. state of all vehicles)")
   local response = {type = 'ScenarioUpdate'}
   local vehicleStates = {}
   for idx, vid in ipairs(msg['vehicles']) do
     vehicleStates[vid] = getVehicleState(vid)
-    print('Got vehicle state: ' .. vid)
   end
   response['vehicles'] = vehicleStates
 
@@ -1003,156 +1004,106 @@ M.handleSetRelativeCam = function(msg)
   end
 end
 
-local debugObjects = { spheres = {}, 
-                       polylines = {}, 
-                       cylinders = {}, 
-                       triangles = {}, 
-                       rectangles ={},
-                       text = {},
-                       squarePrisms = {}
-                      }
-local debugObjectCounter = {sphereNum = 0, 
-                            lineNum = 0, 
-                            cylinderNum = 0, 
-                            triangleNum = 0,
-                            rectangleNum = 0,
-                            textNum = 0,
-                            prismNum = 0
-                          }
+M.handleAddDebugLine = function(msg)
+  local points = msg['points']
+  local pointColors = msg['pointColors']
 
-local function tableToPoint3F(point, cling, offset)
-  local point = Point3F(point[1], point[2], point[3])
-  if cling then 
-    local z = be:getSurfaceHeightBelow(point)
-    point = Point3F(point.x, point.y, z+offset)
+  local spheres = msg['spheres']
+  local sphereColors = msg['sphereColors']
+
+  local cling = msg['cling'] or false
+  local groundOffset = msg['offset'] or 0
+
+  if #points ~= #pointColors then
+    rcom.sendBNGValueError(skt, 'Different amount of debug line points and colors given!')
+    return
   end
-  return point
-end
 
-M.handleAddDebugSpheres = function(msg)
-  local sphereIDs = {}
-  for idx = 1,#msg.radii do 
-    local coo = tableToPoint3F(msg.coordinates[idx], msg.cling, msg.offset)
-    local color = msg.colors[idx]
-    color = ColorF(color[1], color[2], color[3], color[4])
-    local sphere = {coo = coo, radius = msg.radii[idx], color = color}
-    debugObjectCounter.sphereNum = debugObjectCounter.sphereNum + 1
-    debugObjects.spheres[debugObjectCounter.sphereNum] = sphere
-    table.insert(sphereIDs, debugObjectCounter.sphereNum)
+  if spheres ~= nil and sphereColors ~= nil then
+    if #spheres ~= #sphereColors then
+      rcom.sendBNGValueError(skt, 'Different amount of debug spheres and colors given!')
+      return
+    end
   end
-  local resp = {type = 'DebugSphereAdded', sphereIDs = sphereIDs}
-  rcom.sendMessage(skt, resp)
-end
 
-M.handleRemoveDebugObjects = function(msg)
-  for _, idx in pairs(msg.objIDs) do
-    debugObjects[msg.objType][idx] = nil
+  local convertedPoints = {}
+  local convertedPointColors = {}
+  for i = 1, #points do
+    local point = points[i]
+    local color = pointColors[i]
+
+    point = Point3F(point[1], point[2], point[3])
+
+    if cling then
+      local height = be:getSurfaceHeightBelow(point)
+      point = Point3F(point.x, point.y, height + groundOffset)
+    end
+
+    table.insert(convertedPoints, point)
+    table.insert(convertedPointColors, ColorF(color[1], color[2], color[3], color[4]))
   end
-  rcom.sendACK(skt, 'DebugObjectsRemoved')
-end
 
-M.handleAddDebugPolyline = function(msg)
-  local polyline = {segments = {}}
-  polyline.color = ColorF(msg.color[1], msg.color[2], msg.color[3], msg.color[4])
-  local origin = tableToPoint3F(msg.coordinates[1], msg.cling, msg.offset)
-  for i = 2, #msg.coordinates do 
-    local target = tableToPoint3F(msg.coordinates[i], msg.cling, msg.offset)
-    local segment = {origin = origin, target = target}
-    table.insert(polyline.segments, segment)
-    origin = target
+  local line = {
+    points = convertedPoints,
+    pointColors = convertedPointColors
+  }
+
+  if spheres ~= nil then
+    local convertedSpheres = {}
+    local convertedSphereColors = {}
+
+    for i = 1, #spheres do
+      local point = spheres[i]
+      local color = sphereColors[i]
+
+      point = Point3F(point[1], point[2], point[3])
+
+      if cling then
+        point.z = 10000
+        local height = be:getSurfaceHeightBelow(point)
+        point = Point3F(point.x, point.y, height + groundOffset)
+      end
+
+      table.insert(convertedSpheres, { point = point, radius = spheres[i][4] })
+      table.insert(convertedSphereColors, ColorF(color[1], color[2], color[3], color[4]))
+    end
+
+    line.spheres = convertedSpheres
+    line.sphereColors = convertedSphereColors
   end
-  debugObjectCounter.lineNum = debugObjectCounter.lineNum + 1
-  table.insert(debugObjects.polylines, debugObjectCounter.lineNum, polyline)
-  local resp = {type = 'DebugPolylineAdded', lineID = debugObjectCounter.lineNum}
+
+  table.insert(debugLines, line)
+
+  local resp = {type = 'DebugLineAdded', lineID = #debugLines}
   rcom.sendMessage(skt, resp)
 end
 
-M.handleAddDebugCylinder = function(msg)
-  local circleAPos = tableToPoint3F(msg.circlePositions[1], false, 0)
-  local circleBPos = tableToPoint3F(msg.circlePositions[2], false, 0)
-  local color = ColorF(msg.color[1], msg.color[2], msg.color[3], msg.color[4])
-  local cylinder = {circleAPos=circleAPos, circleBPos=circleBPos, radius=msg.radius, color=color}
-  debugObjectCounter.cylinderNum = debugObjectCounter.cylinderNum + 1
-  table.insert(debugObjects.cylinders, debugObjectCounter.cylinderNum, cylinder)
-  local resp = {type='DebugCylinderAdded', cylinderID=debugObjectCounter.cylinderNum}
-  rcom.sendMessage(skt, resp)
-end
-
-M.handleAddDebugTriangle = function(msg)
-  local color = msg.color
-  color = ColorI(math.ceil(color[1]*255), math.ceil(color[2]*255), math.ceil(color[3]*255), math.ceil(color[4]*255))
-  local pointA = tableToPoint3F(msg.vertices[1], msg.cling, msg.offset)
-  local pointB = tableToPoint3F(msg.vertices[2], msg.cling, msg.offset)
-  local pointC = tableToPoint3F(msg.vertices[3], msg.cling, msg.offset)
-  local triangle = {a=pointA, b=pointB, c=pointC, color=color}
-  debugObjectCounter.triangleNum = debugObjectCounter.triangleNum + 1
-  table.insert(debugObjects.triangles, debugObjectCounter.triangleNum, triangle)
-  local resp = {type ='DebugTriangleAdded', triangleID = debugObjectCounter.triangleNum}
-  rcom.sendMessage(skt, resp)
-end
-
-M.handleAddDebugRectangle = function(msg)
-  local color = msg.color
-  color = ColorI(math.ceil(color[1]*255), math.ceil(color[2]*255), math.ceil(color[3]*255), math.ceil(color[4]*255))
-  local pointA = tableToPoint3F(msg.vertices[1], msg.cling, msg.offset)
-  local pointB = tableToPoint3F(msg.vertices[2], msg.cling, msg.offset)
-  local pointC = tableToPoint3F(msg.vertices[3], msg.cling, msg.offset)
-  local pointD = tableToPoint3F(msg.vertices[4], msg.cling, msg.offset)
-  local rectangle = {a=pointA, b=pointB, c=pointC, d=pointD, color=color}
-  debugObjectCounter.rectangleNum = debugObjectCounter.rectangleNum + 1
-  table.insert(debugObjects.rectangles, debugObjectCounter.rectangleNum, rectangle)
-  local resp = {type ='DebugRectangleAdded', rectangleID = debugObjectCounter.rectangleNum}
-  rcom.sendMessage(skt, resp)
-end
-
-M.handleAddDebugText = function(msg)
-  local color = ColorF(msg.color[1], msg.color[2], msg.color[3], msg.color[4])
-  local origin = tableToPoint3F(msg.origin, msg.cling, msg.offset)
-  local content = String(msg.content)
-  local text = {origin = origin, content = content, color = color}
-  debugObjectCounter.textNum = debugObjectCounter.textNum + 1
-  table.insert(debugObjects.text, debugObjectCounter.textNum, text)
-  local resp = {type ='DebugTextAdded', textID = debugObjectCounter.textNum}
-  rcom.sendMessage(skt, resp)
-end
-
-M.handleAddDebugSquarePrism = function(msg)
-  local color = ColorF(msg.color[1], msg.color[2], msg.color[3], msg.color[4])
-  local az, bz = msg.endPoints[1][3], msg.endPoints[2][3]
-  local sideA = tableToPoint3F(msg.endPoints[1], false, 0)
-  local sideB = tableToPoint3F(msg.endPoints[2], false, 0)
-  local sideADims = Point2F(msg.dims[1][1], msg.dims[1][2])
-  local sideBDims = Point2F(msg.dims[2][1], msg.dims[2][2])
-  local prism = {sideA=sideA, sideB=sideB, sideADims=sideADims, sideBDims=sideBDims, color = color}
-  debugObjectCounter.prismNum = debugObjectCounter.prismNum + 1
-  table.insert(debugObjects.squarePrisms, debugObjectCounter.prismNum, prism)
-  local resp = {type ='DebugSquarePrismAdded', prismID = debugObjectCounter.prismNum}
-  rcom.sendMessage(skt, resp)
+M.handleRemoveDebugLine = function(msg)
+  local lineID = msg['lineID']
+  debugLines[lineID] = {}
+  rcom.sendACK(skg, 'DebugLineRemoved')
 end
 
 M.onDrawDebug = function(dtReal, lastFocus)
-  for _, sphere in pairs(debugObjects.spheres) do 
-    debugDrawer:drawSphere(sphere.coo, sphere.radius, sphere.color)
-  end
-  for _, polyline in pairs(debugObjects.polylines) do 
-    for _, segment in pairs(polyline.segments) do 
-      debugDrawer:drawLine(segment.origin, segment.target, polyline.color)
+  for i = 1, #debugLines do
+    local line = debugLines[i]
+
+    if line.spheres ~= nil then
+      for j = 1, #line.spheres do
+        local point = line.spheres[j].point
+        local radius = line.spheres[j].radius
+        local color = line.sphereColors[j]
+
+        debugDrawer:drawSphere(point, radius, color)
+      end
     end
-  end
-  for _, cylinder in pairs(debugObjects.cylinders) do 
-    debugDrawer:drawCylinder(cylinder.circleAPos, cylinder.circleBPos, cylinder.radius, cylinder.color)
-  end
-  for _, triangle in pairs(debugObjects.triangles) do 
-    debugDrawer:drawTriSolid(triangle.a, triangle.b, triangle.c, triangle.color)
-  end
-  for _, rectangle in pairs(debugObjects.rectangles) do 
-    debugDrawer:drawQuadSolid(rectangle.a, rectangle.b, rectangle.c, rectangle.d, rectangle.color)
-  end
-  for _, line in pairs(debugObjects.text) do 
-    debugDrawer:drawText(line.origin, line.content, line.color)
-  end
-  for _, prism in pairs(debugObjects.squarePrisms) do 
-    debugDrawer:drawSquarePrism(prism.sideA, prism.sideB, prism.sideADims, prism.sideBDims, prism.color)
+
+    for j = 1, #line.points - 1 do
+      local a = line.points[j]
+      local b = line.points[j + 1]
+
+      debugDrawer:drawLine(a, b, line.pointColors[j + 1])
+    end
   end
 end
 

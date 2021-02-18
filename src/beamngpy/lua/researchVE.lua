@@ -125,6 +125,7 @@ end
 -- Handlers
 
 local function submitInput(inputs, key)
+  -- log("E", "inside submitInput(" .. tostring(inputs) .. ", " .. tostring(key))
   local val = inputs[key]
   if val ~= nil then
     input.event(key, val, 1)
@@ -181,13 +182,6 @@ sensorHandlers.Damage = function(msg)
   return resp
 end
 
-sensorHandlers.State = function(msg)
-  local resp = {type = 'VehicleUpdate'}
-  local vehicleState = getVehicleState()
-  resp['state'] = vehicleState
-  return resp
-end
-
 local function getSensorData(request)
   local response, sensor_type, handler
 
@@ -221,18 +215,19 @@ M.handleSetPartConfig = function(msg)
 end
 
 M.handleSensorRequest = function(msg)
-  local request, sensorData, data
-  sensorData = {}
+  local request, response, data
+  response = {}
   request = msg['sensors']
   for k, v in pairs(request) do
     data = getSensorData(v)
     if data == nil then
       log('E', 'Could not get data for sensor: ' .. k)
     end
-    sensorData[k] = data
+    response[k] = data
   end
 
-  local response = {type = 'SensorData', data = sensorData}
+  response = {type = 'SensorData', data = response}
+  response['state'] = getVehicleState()
   rcom.sendMessage(skt, response)
 end
 
@@ -343,6 +338,15 @@ M.handleSetDriveInLane = function(msg)
   rcom.sendACK(skt, 'AiDriveInLaneSet')
 end
 
+M.handleUpdateVehicle = function(msg)
+  -- log("E", "handleUpdateVehicle", "sending message to get vehicle state")
+  local response = {type = 'VehicleUpdate'}
+  local vehicleState = getVehicleState()
+  response['state'] = vehicleState
+  rcom.sendMessage(skt, response)
+  return true
+end
+
 M.handleSetLights = function(msg)
   local leftSignal = msg['leftSignal']
   local rightSignal = msg['rightSignal']
@@ -420,5 +424,106 @@ M.handleQueueLuaCommandVE = function(msg)
   end
   rcom.sendACK(skt, 'ExecutedLuaChunkVE')
 end
+
+-- -------------------------------------------------------------------
+
+M.handleSaveVehicle = function(msg)
+  local response = {type = 'SaveVehicle'}
+  local vehicleStates = {}
+  log('D', 'Inside handleSaveVehicle')
+  -- log('D', 'msg[\'filepath\']' .. msg['filepath'])
+  local resp = {type = 'Damage'}
+  log('D', 'About to exec beamstate.save()')
+  -- beamstate.load(msg['filepath'])
+  beamstate.save()
+  --  rcom.sendACK(skt, 'CurrentVehicleSaved')
+  return true
+end
+
+M.handleLoadVehicle = function(msg)
+  local response = {type = 'LoadVehicle'}
+  local vehicleStates = {}
+  log('D', 'Inside handleLoadVehicle')
+  log('E', 'msg[\'filepath\']' .. msg['filepath'])
+  local resp = {type = 'Damage'}
+  log('D', 'About to exec beamstate.load()')
+  beamstate.load(msg['filepath'])
+  -- beamstate.load()
+  -- beamstate.init()
+  -- beamstate.updateGFX()
+  -- beamstate.sendUISkeletonState()
+  -- beamstate.sendUISkeleton()
+ end
+
+M.handleLoadVehicleWithTransform = function(msg)
+  local response = {type = 'LoadVehicle'}
+  local vehicleStates = {}
+  log('D', 'Inside handleLoadVehicle')
+  log('D', 'msg[\'filepath\']' .. msg['filepath'])
+  local resp = {type = 'Damage'}
+  log('D', 'About to exec beamstate.load()')
+  -- beamstate.load(msg['filepath'])
+  beamstate.load()
+  -- rcom.sendACK(skt, 'SavedVehicleLoaded')
+end
+
+M.handleStartRecovering = function(msg)
+  recovery.startRecovering()
+end
+
+M.handleStopRecovering = function(msg)
+  recovery.stopRecovering()
+end
+
+M.handleBackup = function(msg)
+  local sec = msg['sec']
+  local steps = sec /  0.2 -- recovery.recoveryPointTimedelta
+  -- for i=0,steps do
+  --   local recPoint = recovery.recoveryPoints:pop_right()
+  -- end
+  if recovery == nil then
+    log("E", "recovery is nil")
+  end
+  recovery.updateGFXRecovery(sec)
+  local recPoint = recovery.recoveryPoints:pop_right()
+  local pos = recPoint['pos']
+  local dirFront = recPoint['dirFront']
+  local dirUp = recPoint['dirUp']
+  beamstate.load(recPoint['beamstate'])
+  local roll, pitch = recovery.getRollPitch(dirFront, dirUp)
+  local rot = recovery.quatFromDir(-dirFront, vec3(0,0,1))
+  vehicle:queueGameEngineLua("vehicleSetPositionRotation("..vehicle:getID()..","..recPoint.pos.x..","..recPoint.pos.y..","..recPoint.pos.z..","..rot.x..","..rot.y..","..rot.z..","..rot.w..")")
+end
+
+M.handleSaveRecoveryPoint = function(msg)
+  local pointName = msg['pointName']
+  recovery.savePoint(pointName)
+end
+
+M.handleLoadRecoveryPoint = function(msg)
+  local pointName = msg['pointName']
+  local filename = recovery.loadPoint(pointName)
+  local response = {type = 'Recovery', data = response}
+  response['filename'] = filename
+  rcom.sendMessage(skt, response)
+end
+
+M.handleGetAiState = function(msg)
+  local state = ai.getState()
+  local response = {type = 'AIState', data = response}
+  response['crashTime'] = state['crashTime']
+  response['debugMode'] = state['debugMode']
+  response['speedMode'] = state['speedMode']
+  response['routeSpeed'] = state['routeSpeed']
+  response['extAggression'] = state['extAggression']
+  response['crashManeuver'] = state['crashManeuver']
+  response['crashDir'] = state['crashDir']
+  -- response[''] = state['']
+  -- log("E", "AI state is " .. tostring(state))
+  -- log("E", "AI state[crashTime] is " .. tostring(state['crashTime']))
+  rcom.sendMessage(skt, response)
+end
+-- ---------------------------------------------------------------------
+
 
 return M

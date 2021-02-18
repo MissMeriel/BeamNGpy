@@ -42,7 +42,8 @@ def spawn_point(scenario_locale):
     elif scenario_locale == 'west_coast_usa':
         #return {'pos':(-717.121, 101, 118.675), 'rot':None, 'rot_quat':(0, 0, 0.3826834, 0.9238795)}
         return {'pos': (-717.121, 101, 118.675), 'rot': None, 'rot_quat': (0, 0, 0.918812, -0.394696)}
-    #906, 118.78 rot:
+        # racetrack
+        return {'pos': (395.125, -247.713, 145.67), 'rot': None, 'rot_quat': (0, 0, 0.700608, 0.713546)}
     elif scenario_locale == 'smallgrid':
         return {'pos':(0.0, 0.0, 0.0), 'rot':None, 'rot_quat':(0, 0, 0.3826834, 0.9238795)}
     elif scenario_locale == 'automation_test_track':
@@ -53,16 +54,16 @@ def spawn_point(scenario_locale):
         # handling circuit
         #return {'pos': (-294.031, 10.4074, 118.518), 'rot': None, 'rot_quat': (0, 0, 0.708103, 0.706109)}
         # rally track
-        return {'pos': (-374.835, 84.8178, 115.084), 'rot': None, 'rot_quat': (0, 0, 0.718422, 0.695607)}
+        #return {'pos': (-374.835, 84.8178, 115.084), 'rot': None, 'rot_quat': (0, 0, 0.718422, 0.695607)}
         # highway (open, farm-like)
-        #return {'pos': (-294.791, -255.693, 118.703), 'rot': None, 'rot_quat': (0, 0, -0.704635, 0.70957)}
+        return {'pos': (-294.791, -255.693, 118.703), 'rot': None, 'rot_quat': (0, 0, -0.704635, 0.70957)}
         # default
         #return {'pos': (487.25, 178.73, 131.928), 'rot': None, 'rot_quat': (0, 0, -0.702719, 0.711467)}
 
 def setup_sensors(vehicle):
     # Set up sensors
     pos = (-0.3, 1, 1.0)
-    direction = (0, 0.75, 0) #(0,1,0)
+    direction = (0, 0.75, 1.5) #(0, 0.75, -1.5) #(0, 0.75, 0) #(0,1,0)
     fov = 120
     resolution = (512, 512)
     front_camera = Camera(pos, direction, fov, resolution,

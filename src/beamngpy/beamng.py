@@ -153,6 +153,7 @@ class BeamNGpy:
             user = user / 'BeamNG.research'
         else:
             user = user / 'BeamNG.drive'
+        log.debug("user: {}".format(user))
         return user
 
     def determine_binary(self):
@@ -187,6 +188,8 @@ class BeamNGpy:
             mods.mkdir(parents=True)
 
         lua = Path(__file__).parent / 'lua'
+        log.debug("lua: {}".format(lua))
+        log.debug("self.user: {}".format(self.user))
         common = lua / 'researchCommunication.lua'
         ge = lua / 'researchGE.lua'
         ve = lua / 'researchVE.lua'
@@ -237,7 +240,8 @@ class BeamNGpy:
         if self.user:
             call.append('-userpath')
             call.append(str(self.user))
-
+        print('inside beamnng.py prepare_call')
+        print("call: {}".format(call))
         return call
 
     def start_beamng(self, extensions, *args, **opts):
@@ -395,6 +399,7 @@ class BeamNGpy:
         self.send(connection_msg)
 
         vehicle.connect(self, vehicle_server, port)
+        vehicle.update_vehicle()
         return vehicle_server
 
     def setup_vehicles(self, scenario):
@@ -721,8 +726,6 @@ class BeamNGpy:
 
     def poll_sensors(self, vehicle):
         """
-        This member function is deprecated and will be removed in future versions.
-        Use 'Vehicle.poll_sensors' instead.
         Retrieves sensor values for the sensors attached to the given vehicle.
         This method correctly splits requests meant for the game engine and
         requests meant for the vehicle, sending them to their supposed
@@ -739,10 +742,25 @@ class BeamNGpy:
             dictionary having a key-value pair for each sensor's name and the
             data received for it.
         """
-        warnings.warn("'BeamNGpy.poll_sensors' is deprecated\nuse 'Vehicle.poll_sensors' instead\nthis function is going to be removed in the future", DeprecationWarning)
+        engine_reqs, vehicle_reqs = vehicle.encode_sensor_requests()
+        sensor_data = dict()
 
-        vehicle.poll_sensors()
-        return vehicle.sensor_cache
+        if engine_reqs['sensors']:
+            start = time.time()
+            self.send(engine_reqs)
+            response = self.recv()
+            assert response['type'] == 'SensorData'
+            sensor_data.update(response['data'])
+
+        if vehicle_reqs['sensors']:
+            response = vehicle.poll_sensors(vehicle_reqs)
+            sensor_data.update(response)
+        else:
+            vehicle.update_vehicle()
+
+        result = vehicle.decode_sensor_response(sensor_data)
+        vehicle.sensor_cache = result
+        return result
 
     def render_cameras(self):
         """
@@ -1038,6 +1056,40 @@ class BeamNGpy:
         data['name'] = vehicle.vid
         data['model'] = vehicle.options['model']
         data['pos'] = pos
+        if rot:
+            raise_rot_deprecation_warning()
+            rot_quat = angle_to_quat(rot)
+        data['rot'] = rot_quat
+        data.update(vehicle.options)
+        self.send(data)
+        resp = self.recv()
+        self.connect_vehicle(vehicle)
+        assert resp['type'] == 'VehicleSpawned'
+
+    def spawn_vehicle2(self, vehicle, pos, rot,
+                      rot_quat=(0, 0, 0, 1), cling=True):
+        """
+        Spawns the given :class:`.Vehicle` instance in the simulator. This
+        method is meant for spawning vehicles *during the simulation*. Vehicles
+        that are known to be required before running the simulation should be
+        added during scenario creation instead.
+
+        Args:
+            vehicle (:class:`.Vehicle`): The vehicle to be spawned.
+            pos (tuple): Where to spawn the vehicle as a (x, y, z) triplet.
+            rot (tuple): The rotation of the vehicle as a triplet of Euler
+                         angles.
+            rot_quat (tuple): Vehicle rotation in form of a quaternion
+            cling (bool): If set, the z-coordinate of the vehicle's position
+                          will be set to the ground level at the given
+                          position to avoid spawning the vehicle below ground
+                          or in the air.
+        """
+        data = dict(type='SpawnVehicle', cling=cling)
+        data['name'] = vehicle.vid
+        data['model'] = vehicle.options['model']
+        data['pos'] = pos
+        data['configString'] = None
         if rot:
             raise_rot_deprecation_warning()
             rot_quat = angle_to_quat(rot)
@@ -1453,7 +1505,6 @@ class BeamNGpy:
                        spheres=None, sphere_colors=None,
                        cling=False, offset=0):
         """
-        Function use is deprecated, use 'add_debug_polyline' instead!
         Adds a visual line to be rendered by BeamNG. This is mainly used for
         debugging purposes, but can also be used to add visual indicators to
         the user. A line is given as a series of points encoded as (x, y, z)
@@ -1469,7 +1520,7 @@ class BeamNGpy:
                            coordinate triplets.
             point_colors (list): List of colors as (r, g, b, a) quartets, each
                                  value expressing red, green, blue, and alpha
-                                 intensity from 0 to 1. Only the first entry is used.
+                                 intensity from 0 to 1.
             spheres (list): Optional list of points where spheres should be
                             rendered, given as (x, y, z, r) tuples where x,y,z
                             are coordinates and r the radius of the sphere.
@@ -1486,147 +1537,35 @@ class BeamNGpy:
                             ground by, for example, adding 10cm to the z value.
 
         Returns:
-            The ID of the added debug line that can be used to remove the line
+            An ID of the added debug line that can be used later to disable
+            rendering of that line.
         """
-        warnings.warn('use of "add_debug_line" deprecated it will be removed in future versions, use "add_debug_polyline" and "add_debug_spheres" instead')
+        data = dict(type='AddDebugLine')
+        data['points'] = points
+        data['pointColors'] = point_colors
+
         if spheres:
-            coordinates = [s[:3] for s in spheres]
-            radii = [s[3] for s in spheres]
-            self.add_debug_spheres(coordinates, radii, sphere_colors, cling, offset)
+            data['spheres'] = spheres
+            data['sphereColors'] = sphere_colors
 
-        lineID = self.add_debug_polyline(points, point_colors[0], cling, offset)
-        return lineID
-
-    def remove_debug_line(self, line_id):
-        warnings.warn('use of "remove_debug_line" deprecated it will be removed in future versions, use "add_debug_polyline" instead')
-        self.remove_debug_polyline(line_id)
-
-    def add_debug_spheres(self, coordinates, radii, rgba_colors, cling=False, offset=0):
-        data = dict(type="AddDebugSpheres")
-        assert len(coordinates) == len(radii) == len(rgba_colors)
-        data['coordinates'] = coordinates
-        data['radii'] = radii
-        data['colors'] = rgba_colors
         data['cling'] = cling
         data['offset'] = offset
         self.send(data)
         resp = self.recv()
-        assert resp['type'] == 'DebugSphereAdded'
-        return resp['sphereIDs']
-
-    @ack('DebugObjectsRemoved')
-    def remove_debug_spheres(self, sphere_ids):
-        data = dict(type='RemoveDebugObjects')
-        data['objType'] = 'spheres'
-        data['objIDs'] = sphere_ids
-        self.send(data)
-    
-    def add_debug_polyline(self, coordinates, rgba_color, cling=False, offset=0):
-        data = dict(type='AddDebugPolyline')
-        data['coordinates'] = coordinates
-        data['color'] = rgba_color
-        data['cling'] = cling
-        data['offset'] = offset
-        self.send(data)
-        resp = self.recv()
-        assert resp['type'] == 'DebugPolylineAdded'
+        assert resp['type'] == 'DebugLineAdded'
         return resp['lineID']
 
-    @ack('DebugObjectsRemoved')
-    def remove_debug_polyline(self, line_id):
-        data = dict(type='RemoveDebugObjects')
-        data['objType'] = 'polylines'
-        data['objIDs'] = [line_id]
+    @ack('DebugLineRemoved')
+    def remove_debug_line(self, line_id):
+        data = dict(type='RemoveDebugLine')
+        data['lineID'] = line_id
         self.send(data)
 
-    def add_debug_cylinder(self, circle_positions, radius, rgba_color):
-            data = dict(type='AddDebugCylinder')
-            data['circlePositions'] = circle_positions
-            data['radius'] = radius
-            data['color'] = rgba_color
-            self.send(data)
-            resp = self.recv()
-            assert resp['type'] == 'DebugCylinderAdded'
-            return resp['cylinderID']
+###########################################################################################
+    def save_vehicle(self):
+        data = dict(type='SaveVehicle')
 
-    @ack('DebugObjectsRemoved')
-    def remove_debug_cylinder(self, cylinder_id):
-        data = dict(type='RemoveDebugObjects')
-        data['objType'] = 'cylinders'
-        data['objIDs'] = [cylinder_id]
-        self.send(data)
-
-    def add_debug_triangle(self, vertices, rgba_color, cling=False, offset=0):
-            data = dict(type='AddDebugTriangle')
-            data['vertices'] = vertices
-            data['color'] = rgba_color
-            data['cling'] = cling
-            data['offset'] = offset
-            self.send(data)
-            resp = self.recv()
-            assert resp['type'] == 'DebugTriangleAdded'
-            return resp['triangleID']
-
-    @ack('DebugObjectsRemoved')
-    def remove_debug_triangle(self, triangle_id):
-        data = dict(type='RemoveDebugObjects')
-        data['objType'] = 'triangles'
-        data['objIDs'] = [triangle_id]
-        self.send(data)
-
-    def add_debug_rectangle(self, vertices, rgba_color, cling=False, offset=0):
-            data = dict(type='AddDebugRectangle')
-            data['vertices'] = vertices
-            data['color'] = rgba_color
-            data['cling'] = cling
-            data['offset'] = offset
-            self.send(data)
-            resp = self.recv()
-            assert resp['type'] == 'DebugRectangleAdded'
-            return resp['rectangleID']
-
-    @ack('DebugObjectsRemoved')
-    def remove_debug_rectangle(self, rectangle_id):
-        data = dict(type='RemoveDebugObjects')
-        data['objType'] = 'rectangles'
-        data['objIDs'] = [rectangle_id]
-        self.send(data)
-
-    def add_debug_text(self, origin, content, rgba_color, cling=False, offset=0):
-            data = dict(type='AddDebugText')
-            data['origin'] = origin
-            data['content'] = content
-            data['color'] = rgba_color
-            data['cling'] = cling
-            data['offset'] = offset
-            self.send(data)
-            resp = self.recv()
-            assert resp['type'] == 'DebugTextAdded'
-            return resp['textID']
-
-    @ack('DebugObjectsRemoved')
-    def remove_debug_text(self, text_id):
-        data = dict(type='RemoveDebugObjects')
-        data['objType'] = 'text'
-        data['objIDs'] = [text_id]
-        self.send(data)
-
-    def add_debug_square_prism(self, end_points, end_point_dims, rgba_color):
-            data = dict(type='AddDebugSquarePrism')
-            data['endPoints'] = end_points
-            data['dims'] = end_point_dims
-            data['color'] = rgba_color
-            self.send(data)
-            resp = self.recv()
-            assert resp['type'] == 'DebugSquarePrismAdded'
-            return resp['prismID']
-
-    @ack('DebugObjectsRemoved')
-    def remove_debug_square_prism(self, prism_id):
-        data = dict(type='RemoveDebugObjects')
-        data['objType'] = 'squarePrisms'
-        data['objIDs'] = [prism_id]
-        self.send(data)
+###########################################################################################
 
     def __enter__(self):
         self.open()

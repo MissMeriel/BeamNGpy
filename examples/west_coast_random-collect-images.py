@@ -25,12 +25,12 @@ import cv2
 import scipy.misc
 
 # globals
-training_dir = 'training_images_hirochi6'
+training_dir = 'training_images_hirochi_remove'
 default_model = 'etk800' #'pickup'
 default_scenario = 'utah' #'hirochi_raceway' #'utah' #'automation_test_track' #'west_coast_usa' #'cliff' # smallgrid
 dt = 20
 #base_filename = '{}/{}/{}_{}_'.format(os.getcwd(), training_dir, default_model, default_scenario.replace("_", ""))
-base_filename = 'G:/{}/{}_{}_'.format(training_dir, default_model, default_scenario.replace("_", ""))
+base_filename = 'H:/{}/{}_{}_'.format(training_dir, default_model, default_scenario.replace("_", ""))
 
 def spawn_point(scenario_locale):
     if scenario_locale is 'cliff':
@@ -85,11 +85,10 @@ def spawn_point(scenario_locale):
         # parking lot (do not use for training)
         # return {'pos': (907.939, 773.502, 235.878), 'rot': None, 'rot_quat': (0, 0, -0.652498, 0.75779)}
 
-
 def setup_sensors(vehicle):
     # Set up sensors
     pos = (-0.3, 1, 1.0)
-    direction = (0, 1, 0)
+    direction = (0, 1, -0.5)
     fov = 120
     resolution = (512, 512)
     front_camera = Camera(pos, direction, fov, resolution,

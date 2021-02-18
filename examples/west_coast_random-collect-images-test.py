@@ -28,7 +28,10 @@ import scipy.misc
 default_model = 'pickup'
 default_scenario = 'automation_test_track' #'west_coast_usa' #'cliff' # smallgrid
 dt = 20
-base_filename = '{}/training_images/{}_{}_'.format(os.getcwd(), default_model, default_scenario.replace("_", ""))
+camera_pos = (-0.3, 1, 1.0)
+camera_direction = (0, 1, -1.5)
+base_filename = 'H:/camera_mount/{}_{}_'.format(default_model, default_scenario.replace("_", ""))
+
 
 def spawn_point(scenario_locale):
     if scenario_locale is 'cliff':
@@ -43,13 +46,12 @@ def spawn_point(scenario_locale):
 
 def setup_sensors(vehicle):
     # Set up sensors
-    pos = (-0.3, 1, 1.0)
-    direction = (0, 1, 0)
+    global camera_pos, camera_direction
     fov = 120
     resolution = (512, 512)
-    front_camera = Camera(pos, direction, fov, resolution,
+    front_camera = Camera(camera_pos, camera_direction, fov, resolution,
                           colour=True, depth=True, annotation=True)
-    pos = (0.0, 3, 1.0)
+    pos = (0.0, 2.5, 1.0)
     direction = (0, -1, 0)
     fov = 90
     resolution = (512, 512)
@@ -101,9 +103,6 @@ def main():
     vehicle.ai_set_mode('span')
     vehicle.ai_drive_in_lane(True)
 
-    # Put simulator in pause awaiting further inputs
-    bng.pause()
-
     assert vehicle.skt
 
     # Send random inputs to vehice and advance the simulation 20 steps
@@ -115,28 +114,18 @@ def main():
 
         # collect images
         image = bng.poll_sensors(vehicle)['front_cam']['colour'].convert('RGB')
-        #image = image.convert('RGB')
-        #image = Image.fromarray(np.asarray(image.convert('RGB')))
-        #image = Image.fromarray(np.asarray(image), 'RGB')
-        #image = Image.fromarray(image.astype('uint8'), 'RGB')
         images.append(image)
         filename = "{}{}.bmp".format(base_filename, len(images))
 
         # save the image
-        #plt.imsave('training_images/test.bmp', np.asarray(image))
-        #plt.imshow(np.asarray(image))
+        plt.imshow(np.asarray(image))
         plt.pause(1)
         image.save(filename)
-        #opencvImage = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-        #cv2.imwrite(filename, opencvImage)
         bng.step(20)
 
         # Retrieve sensor data and show the camera data.
         sensors = bng.poll_sensors(vehicle)
-
         print('{} seconds passed.'.format(sensors['timer']['time']))
-
-
     bng.close()
 
 

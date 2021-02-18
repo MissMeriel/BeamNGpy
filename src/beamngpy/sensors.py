@@ -16,7 +16,6 @@ import logging as log
 import mmap
 import os
 import sys
-from abc import ABC, abstractmethod
 
 import numpy as np
 from PIL import Image
@@ -26,47 +25,11 @@ FAR = 1000
 
 LIDAR_POINTS = 2000000
 
-class AbstractSensor(ABC):
-    """
-    Abstract Sensor class declaring properties common to the ordinary and noise sensors.
-    """
-    
-    @property
-    @abstractmethod
-    def data(self):
-        pass   
 
-    @data.setter
-    @abstractmethod
-    def data(self, data):
-        pass
-
-    @data.deleter
-    @abstractmethod
-    def data(self):
-        pass
-    
-class Sensor(AbstractSensor):
+class Sensor:
     """
     Sensor meta-class declaring methods common to them.
     """
-    def __init__(self):
-        self._data = dict()     
-
-    @property
-    def data(self):
-        """
-        Property used to store sensor readings.
-        """
-        return self._data
-
-    @data.setter
-    def data(self, data):
-        self._data = data
-    
-    @data.deleter
-    def data(self):
-        self._data = None
 
     def attach(self, vehicle, name):
         """
@@ -162,7 +125,7 @@ class Sensor(AbstractSensor):
         Called when the attached vehicle is being removed from simulation. This
         method is used to perform teardown code after the simulation.
         """
-        del self.data
+        pass
 
     def get_engine_flags(self):
         """
@@ -221,7 +184,6 @@ class Camera(Sensor):
             depth (bool): Whether to output depth information.
             annotation (bool): Whether to output annotation information.
         """
-        super().__init__()
         self.pos = pos
         self.direction = direction
         self.fov = fov
@@ -447,7 +409,6 @@ class Lidar(Sensor):
     def __init__(self, offset=(0, 0, 1.7), direction=(0, -1, 0), vres=32,
                  vangle=26.9, rps=2200000, hz=20, angle=360, max_dist=200,
                  visualized=True):
-        super().__init__()
         self.handle = None
         self.shmem = None
 
@@ -549,8 +510,6 @@ class GForces(Sensor):
 
     # TODO: GForce sensor for specific points on/in the vehicle
     """
-    def __init__(self):
-        super().__init__()
 
     def encode_vehicle_request(self):
         req = dict(type='GForces')
@@ -664,8 +623,6 @@ class Electrics(Sensor):
         'twoStep': 'two_step',
         'watertemp': 'water_temperature',
     }
-    def __init__(self):
-        super().__init__()
 
     def _rename_values(self, vals):
         """
@@ -709,8 +666,6 @@ class Damage(Sensor):
     deformed the vehicle is. It's therefore more of a ground truth than
     simulated sensor data.
     """
-    def __init__(self):
-        super().__init__()
 
     def encode_vehicle_request(self):
         req = dict(type='Damage')
@@ -728,21 +683,7 @@ class Timer(Sensor):
     When polled, this sensor provides the time in seconds since the start of
     the scenario in a dictionary under the 'time' key.
     """
-    def __init__(self):
-        super().__init__()
 
     def encode_engine_request(self):
         req = dict(type='Timer')
-        return req
-
-class State(Sensor):
-    """
-    The state sensor monitors general stats of the vehicle, such as position, direction, velocity, etc.
-    It is a default sensor every vehicle has and is used to update the vehicle.state attribute.
-    """
-    def __init__(self):
-        super().__init__()
-
-    def encode_vehicle_request(self):
-        req  = dict(type='State')
         return req

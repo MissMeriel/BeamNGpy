@@ -10,10 +10,9 @@
 
 import base64
 import logging as log
-import warnings
 
 from .beamngcommon import *
-from .sensors import State
+
 
 SHIFT_MODES = {
     'realistic_manual': 0,
@@ -61,26 +60,9 @@ class Vehicle:
 
         self.extensions = options.get('extensions')
 
-        self._veh_state_sensor_id = "state"
-        state = State()
-        self.attach_sensor(self._veh_state_sensor_id, state)
-        
-
-    def __hash__(self):
-        return hash(self.vid)
-
-    def __eq__(self, other):
-        if isinstance(other, type(self)):
-            return self.vid == other.vid
-        return False
-
-    def __str__(self):
-        return 'V:{}'.format(self.vid)
-
-    @property
-    def state(self):
+        self.state = None
         """
-        This property contains the vehicle's current state in the running
+        This field contains the vehicle's current state in the running
         scenario. It is None if no scenario is running or the state has not
         been retrieved yet. Otherwise, it contains the following key entries:
 
@@ -96,15 +78,17 @@ class Vehicle:
         convenience, a call to :meth:`.Vehicle.poll_sensors` also updates the
         vehicle state along with retrieving sensor data.
         """
-        return self.sensors[self._veh_state_sensor_id].data
 
-    @state.setter
-    def state(self, value):
-        self.sensors[self._veh_state_sensor_id].data = value
+    def __hash__(self):
+        return hash(self.vid)
 
-    @state.deleter
-    def state(self):
-        del self.sensors[self._veh_state_sensor_id].data
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self.vid == other.vid
+        return False
+
+    def __str__(self):
+        return 'V:{}'.format(self.vid)
 
     def send(self, data):
         """
@@ -160,6 +144,7 @@ class Vehicle:
         self.server = None
         self.port = None
         self.skt = None
+        self.state = None
 
     def attach_sensor(self, name, sensor):
         """
@@ -252,50 +237,26 @@ class Vehicle:
         """
         Synchronises the :attr:`.Vehicle.state` field with the simulation.
         """
-        warnings.warn("update_vehicle is deprecated\nthe .Vehicle.state attribute is now a default sensor for every vehicle and is updated through poll_sensors", DeprecationWarning)
-        return self.state
+        data = dict(type='UpdateVehicle')
+        self.send(data)
+        resp = self.recv()
+        self.state = resp['state']
 
-    def poll_sensors(self, requests=None):
+    def poll_sensors(self, requests):
         """
-        Updates the vehicle's sensor readings.
-        Args:
-            mode (str): The mode to set. Must be a string from the options
-                        listed above.
+        Sends a sensor request to the corresponding vehicle in the simulation
+        and returns the raw response data as a dictionary.
 
-        Raises:
-            DeprecationWarning: If requests parameter is used.
-            DeprecationWarning: Always, since the return type will change in the future.
-        
-        Returns:
-            Dict with sensor data to support compatibility with previous versions.
+        Note:
+            This method automatically synchronises the
+            :attr:`.Vehicle.state` field with the simulation.
         """
-        if requests!=None:
-            warnings.warn("do not use 'requests' as function argument\nit is not used and will be removed in future versions", DeprecationWarning)
-        warnings.warn("return type will be None in future versions", DeprecationWarning)
-
-        engine_reqs, vehicle_reqs = self.encode_sensor_requests()
-        sensor_data = dict()
-        compatibility_support = None
-
-        if engine_reqs['sensors']:
-            self.bng.send(engine_reqs)
-            response = self.bng.recv()
-            assert response['type'] == 'SensorData'
-            sensor_data.update(response['data'])
-
-        if vehicle_reqs['sensors']:
-            self.send(vehicle_reqs)
-            response = self.recv()
-            assert response['type'] == 'SensorData'
-            compatibility_support = response['data']
-            sensor_data.update(response['data'])
-
-        result = self.decode_sensor_response(sensor_data)
-        for sensor, data in result.items():
-            self.sensors[sensor].data = data
-
-        self.sensor_cache = result
-        return compatibility_support
+        self.send(requests)
+        response = self.recv()
+        assert response['type'] == 'SensorData'
+        sensor_data = response['data']
+        self.state = response['state']
+        return sensor_data
 
     @ack('ShiftModeSet')
     def set_shift_mode(self, mode):
@@ -763,3 +724,57 @@ class Vehicle:
             sensor.detach(self, name)
 
         self.sensors = dict()
+
+    #######################################################################
+
+    #@ack('CurrentVehicleSaved')
+    def load(self, filepath=None):
+        #if filepath:
+        #filepath = 'C:/Users/merie/Documents/BeamNG.research/{}/vehicle.save.json'.format(self.options['model'])
+        data = dict(type='LoadVehicle')
+        data['filepath'] = filepath
+        self.send(data)
+        # self.bng.await_vehicle_spawn(self.vid)
+        # self.skt.close()
+        # self.server.close()
+        # self.skt = None
+        # self.bng.connect_vehicle(self, self.port)
+
+    #@ack('SavedVehicleLoaded')
+    def save(self, filepath=None):
+        # if filepath:
+        data = dict(type='SaveVehicle')
+        data['filepath'] = filepath
+        self.send(data)
+
+    def startRecovering(self):
+        data = dict(type='StartRecovering')
+        self.send(data)
+
+    def stopRecovering(self):
+        data = dict(type='StopRecovering')
+        self.send(data)
+
+    def backup(self, sec):
+        data = dict(type='Backup')
+        data['sec'] = sec
+        self.send(data)
+
+    def saveRecoveryPoint(self, name):
+        data = dict(type='SaveRecoveryPoint')
+        data['pointName'] = name
+        self.send(data)
+
+    def loadRecoveryPoint(self, name):
+        data = dict(type='LoadRecoveryPoint')
+        data['pointName'] = name
+        self.send(data)
+        resp = self.recv()
+        assert resp['type'] == 'Recovery'
+        return resp['filename']
+
+    def ai_get_state(self):
+        data = dict(type='GetAiState')
+        self.send(data)
+        resp = self.recv()
+        return resp

@@ -140,6 +140,10 @@ def send_msg(skt, data):
         skt (:class:`socket`): The socket to write to
         data (dict): The data to encode and send
     """
+    #print("Inside send_msg")
+    #print(data['type'])
+    #print(data)
+    #print('\n')
     data = msgpack.packb(data, use_bin_type=True)
     length = '{:016}'.format(len(data))
     skt.send(bytes(length, 'ascii'))
@@ -204,6 +208,31 @@ def angle_to_quat(angle):
 
     return (x, y, z, w)
 
+def rad_to_quat(angle):
+    """
+    Converts an euler angle to a quaternion.
+
+    Args:
+        angle (tuple): Euler angle (radians)
+
+    Return:
+        Quaterion with the order (x, y, z, w) with w representing the real
+        component
+    """
+
+    cy = np.cos(angle[2] * 0.5)
+    sy = np.sin(angle[2] * 0.5)
+    cp = np.cos(angle[1] * 0.5)
+    sp = np.sin(angle[1] * 0.5)
+    cr = np.cos(angle[0] * 0.5)
+    sr = np.sin(angle[0] * 0.5)
+
+    w = cr * cp * cy + sr * sp * sy
+    x = sr * cp * cy - cr * sp * sy
+    y = cr * sp * cy + sr * cp * sy
+    z = cr * cp * sy - sr * sp * cy
+
+    return (x, y, z, w)
 
 def compute_rotation_matrix(quat):
     """
