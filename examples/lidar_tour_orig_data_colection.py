@@ -179,6 +179,7 @@ def main():
     damage_prev = None
     start = time.time()
     end = time.time()
+    bng.pause()
     print("Bounding box: {}".format(vehicle.get_bbox()))
     with open('lidar_data.csv', 'w') as f:
         f.write("TIMESTAMP,VEHICLE_POSITION,VEHICLE_ORIENTATION,VELOCITY,LIDAR,CRASH\n")
@@ -191,7 +192,7 @@ def main():
             print("vehicle_state = {}".format(v_state))
             print("vehicle_state[pos] = {}".format(v_state['pos']))
             print("vehicle_state[dir] = {}".format(v_state['dir']))
-            print("Vehicle b  ounding box:{}".format(vehicle.get_bbox()))
+            print("Vehicle bounding box:{}".format(vehicle.get_bbox()))
             #ai_state = vehicle.ai_get_state()
             #print("ai_state = {}".format(ai_state))
             new_damage = diff_damage(damage, damage_prev)

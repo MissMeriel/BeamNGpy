@@ -59,15 +59,13 @@ def main():
     vehicle.attach_sensor('lidar', lidar)
     #beamng.open_lidar('lidar', vehicle, 'shmem', 8000)
     scenario.add_vehicle(vehicle, pos=(-717.121, 101, 118.675), rot=None, rot_quat=(0, 0, 0.3826834, 0.9238795))
-    print(scenario.options)
-    print(scenario.get_info_path())
 
     scenario.make(beamng)
 
     bng = beamng.open(launch=True)
 
-    bng.open_lidar('lidar', vehicle, 'shmem', 8000)
-    lidar.connect(bng, vehicle)
+    #bng.open_lidar('lidar', vehicle, 'shmem', 8000)
+    #lidar.connect(bng, vehicle)
     try:
         bng.load_scenario(scenario)     # this is where the error happens
 

@@ -63,7 +63,7 @@ def spawn_point(scenario_locale):
 def setup_sensors(vehicle):
     # Set up sensors
     pos = (-0.3, 1, 1.0)
-    direction = (0, 0.75, 1.5) #(0, 0.75, -1.5) #(0, 0.75, 0) #(0,1,0)
+    direction = (0, 0.75, 0) #(0, 0.75, -1.5) #(0, 0.75, 0) #(0,1,0)
     fov = 120
     resolution = (512, 512)
     front_camera = Camera(pos, direction, fov, resolution,
@@ -107,7 +107,7 @@ def main():
     beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
     scenario = Scenario(default_scenario, 'research_test')
     vehicle = Vehicle('ego_vehicle', model=default_model,
-                      licence='RED', color='Red')
+                      licence='LOWPRESS', color='Red')
     vehicle = setup_sensors(vehicle)
     spawn = spawn_point(default_scenario)
     scenario.add_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'])
@@ -128,11 +128,15 @@ def main():
 
     #vehicle.ai_set_mode('span')
     #vehicle.ai_drive_in_lane(True)
-    #vehicle.load(vehicle_loadfile)
-    # Put simulator in pause awaiting further inputs
-    #bng.pause()
-    assert vehicle.skt
+    #vehicle_loadfile = 'vehicles/etk800/fronttires_0psi.pc'
+    vehicle_loadfile = 'vehicles/etk800/backtires_0psi.pc'
+    vehicle_loadfile = 'vehicles/etk800/chassis_forcefeedback201.pc'
+    vehicle.load_pc(vehicle_loadfile, False)
 
+    # Put simulator in pause awaiting further inputs
+    bng.pause()
+    assert vehicle.skt
+    bng.resume()
     # Send random inputs to vehice and advance the simulation 20 steps
     for _ in range(1024):
         # collect images
@@ -157,6 +161,7 @@ def main():
         print("DAVE2 steering prediction: {}".format(float(prediction[0][0])))
         #bng.step(20)
         bng.step(5)
+
 
     bng.close()
 

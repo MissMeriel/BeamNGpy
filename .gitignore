@@ -159,3 +159,4 @@ MANIFEST
 html
 html/*
 .vscode
+examples/lidar_data.csv
