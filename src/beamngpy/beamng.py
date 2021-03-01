@@ -432,13 +432,17 @@ class BeamNGpy:
         info_path = info_path[1:]
         info_path = info_path.replace('\\', '/')
         data = {'type': 'LoadScenario', 'path': info_path}
+        print("Sending data to socket...")
         self.send(data)
         resp = self.recv()
+        print("Received response from socket {}".format(resp))
         assert resp['type'] == 'MapLoaded'
+        print("Setting up vehicles...")
         self.setup_vehicles(scenario)
         flags = scenario.get_engine_flags()
         self.set_engine_flags(flags)
         self.scenario = scenario
+        print("Connecting scenario...")
         self.scenario.connect(self)
 
     @ack('SetEngineFlags')
@@ -514,6 +518,7 @@ class BeamNGpy:
             visualized (bool): Whether or not to render the Lidar sensor's
                               points in the simulator.
         """
+        print("Openinng lidar...")
         data = dict(type='OpenLidar')
         data['name'] = name
         data['shmem'] = shmem

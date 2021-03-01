@@ -778,3 +778,9 @@ class Vehicle:
         self.send(data)
         resp = self.recv()
         return resp
+
+    def load_pc(self, filename, respawn=True):
+        data = dict(type='LoadPartConfig')
+        data['filename'] = filename
+        data['respawn'] = respawn
+        self.send(data)

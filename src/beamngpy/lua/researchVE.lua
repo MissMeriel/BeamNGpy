@@ -523,6 +523,10 @@ M.handleGetAiState = function(msg)
   -- log("E", "AI state[crashTime] is " .. tostring(state['crashTime']))
   rcom.sendMessage(skt, response)
 end
+
+M.handleLoadPartConfig = function(msg)
+  partmgmt.load(msg['filename'], msg['respawn'])
+end
 -- ---------------------------------------------------------------------
 
 

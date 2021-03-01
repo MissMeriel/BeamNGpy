@@ -406,9 +406,15 @@ class Lidar(Sensor):
 
     shmem_size = LIDAR_POINTS * 3 * 4
 
-    def __init__(self, offset=(0, 0, 1.7), direction=(0, -1, 0), vres=32,
-                 vangle=26.9, rps=2200000, hz=20, angle=360, max_dist=200,
-                 visualized=True):
+    def __init__(self, offset=(2.4,1,1), direction=(-0.707, -0.707, 0), vres=2,
+                   vangle=0.1, rps=100000, hz=20, angle=180, max_dist=200,
+                   visualized=True):
+    # def __init__(self, offset=(0, 0, 1.7), direction=(0, -1, 0), vres=32,
+    #              vangle=26.9, rps=2200000, hz=20, angle=360, max_dist=200,
+    #              visualized=True):
+    # def __init__(self, offset=(2.4,1,1), direction=(0, -1, 0), vres=32,
+    #              vangle=0.5, rps=100000, hz=20, angle=360, max_dist=200,
+    #              visualized=True):
         self.handle = None
         self.shmem = None
 
@@ -434,6 +440,7 @@ class Lidar(Sensor):
                                          attached to.
             name (str): The name of the sensor.
         """
+        print("attaching lidar...")
         pid = os.getpid()
         self.handle = '{}.{}.{}.lidar'.format(pid, vehicle.vid, name)
         self.shmem = mmap.mmap(0, Lidar.shmem_size, self.handle)
@@ -453,6 +460,7 @@ class Lidar(Sensor):
         self.shmem.close()
 
     def connect(self, bng, vehicle):
+        print("connecting lidar...")
         bng.open_lidar(self.handle, vehicle, self.handle, Lidar.shmem_size,
                        offset=self.offset, direction=self.direction,
                        vres=self.vres, vangle=self.vangle, rps=self.rps,
