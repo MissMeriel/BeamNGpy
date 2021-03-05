@@ -527,6 +527,21 @@ end
 M.handleLoadPartConfig = function(msg)
   partmgmt.load(msg['filename'], msg['respawn'])
 end
+
+M.handleDeflateTires = function(msg)
+  log('I', 'attempting beamstate.deflateSelectTires')
+  beamstate.deflateSelectTires(msg['tires'])
+end
+
+M.handleBreakHinges = function(msg)
+  log('I', 'attempting beamstate.breakHinges')
+  beamstate.breakHinges()
+end
+
+M.handleBreakAllBreakgroups = function(msg)
+  log('I', 'attempting beamstate.breakAllBreakgroups')
+  beamstate.breakAllBreakgroups()
+end
 -- ---------------------------------------------------------------------
 
 

@@ -231,8 +231,8 @@ class Camera(Sensor):
         # if self.annotation:
         self.annotation_handle = '{}.{}.{}.annotate'.format(pid, prefix, name)
         self.annotation_shmem = mmap.mmap(0, size, self.annotation_handle)
-        log.debug('Bound memory for annotation: %s',
-                  self.annotation_handle)
+        # log.debug('Bound memory for annotation: %s',
+        #           self.annotation_handle)
 
     def detach(self, vehicle, name):
         """
@@ -245,16 +245,16 @@ class Camera(Sensor):
             name (str): The name of the camera.
         """
         if self.colour_shmem:
-            log.debug('Unbinding memory for color: %s', self.colour_handle)
+            # log.debug('Unbinding memory for color: %s', self.colour_handle)
             self.colour_shmem.close()
 
         if self.depth_shmem:
-            log.debug('Unbinding memory for depth: %s', self.depth_handle)
+            # log.debug('Unbinding memory for depth: %s', self.depth_handle)
             self.depth_shmem.close()
 
         if self.annotation_shmem:
-            log.debug('Unbinding memory for annotation: %s',
-                      self.annotation_handle)
+            # log.debug('Unbinding memory for annotation: %s',
+            #           self.annotation_handle)
             self.annotation_shmem.close()
 
     def connect(self, bng, vehicle):
@@ -300,7 +300,7 @@ class Camera(Sensor):
     def encode_engine_request(self):
         """
         This method encodes a render request to the simulation engine along
-        with the properties this camera is configured with.
+        with the properties this camera is confi gured with.
 
         Returns:
             The request to the engine as a dictionary. This dictionary contains

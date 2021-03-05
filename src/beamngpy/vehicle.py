@@ -784,3 +784,22 @@ class Vehicle:
         data['filename'] = filename
         data['respawn'] = respawn
         self.send(data)
+
+    # [FL, FR, BL, BR]
+    def deflate_tires(self, tires):
+        print("sending DeflateTires message...")
+        data = dict(type='DeflateTires')
+        data['tires'] = tires
+        self.send(data)
+
+    def break_hinges(self):
+        print("sending BreakHinges message...")
+        data = dict(type='BreakHinges')
+        self.send(data)
+
+    def break_all_breakgroups(self):
+        print("sending breakAllBreakgroups message...")
+        data = dict(type='BreakAllBreakgroups')
+        self.send(data)
+
+
