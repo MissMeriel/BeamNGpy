@@ -1,7 +1,6 @@
 import mmap
-import random
-import sys
-from time import sleep
+import random, math
+import sys, time
 import numpy as np
 import os
 from matplotlib import pyplot as plt
@@ -35,12 +34,18 @@ def spawn_point(scenario_locale, spawn_point ='default'):
         #return {'pos':(-124.806, 142.554, 465.489), 'rot':None, 'rot_quat':(0, 0, 0.3826834, 0.9238795)}
         return {'pos': (-124.806, 190.554, 465.489), 'rot': None, 'rot_quat': (0, 0, 0.3826834, 0.9238795)}
     elif scenario_locale == 'west_coast_usa':
-        # mid highway scenario (past shadowy parts of road)
+        # industrial area
+        #return {'pos': (-717.124, 100.904, 118.558), 'rot': None, 'rot_quat': (0.0013743385206908, 0.0021804112475365, 0.91880744695663, -0.39469763636589)}
+        # chinatown
+        #return {'pos': (-725.712, 554.327, 120.27), 'rot': None, 'rot_quat': (-0.0061643430963159, 0.0011215945705771, -0.53014314174652, 0.84788501262665)}
+        # racetrack
+        #return {'pos': (395.125, -247.713, 145.67), 'rot': None, 'rot_quat': (0, 0, 0.700608, 0.713546)}
+        # mid highway 1 scenario (past shadowy parts of road)
         #return {'pos': (-145.775, 211.862, 115.55), 'rot': None, 'rot_quat': (0.0032586499582976, -0.0018308814615011, 0.92652350664139, -0.37621837854385)}
-        # actually past shadowy parts of road?
-        #return {'pos': (95.1332, 409.858, 117.435), 'rot': None, 'rot_quat': (0.0077012465335429, 0.0036200874019414, 0.90092438459396, -0.43389266729355)}
-        # surface road (crashes early af)
-        #return {'pos': (945.285, 886.716, 132.061), 'rot': None, 'rot_quat': (-0.043629411607981, 0.021309537813067, 0.98556911945343, 0.16216005384922)}
+        # mid highway 2 (actually past shadowy parts of road?)
+        return {'pos': (95.1332, 409.858, 117.435), 'rot': None, 'rot_quat': (0.0077012465335429, 0.0036200874019414, 0.90092438459396, -0.43389266729355)}
+        # surface road 1 (crashes early af)
+        return {'pos': (945.285, 886.716, 132.061), 'rot': None, 'rot_quat': (-0.043629411607981, 0.021309537813067, 0.98556911945343, 0.16216005384922)}
         # surface road 2
         #return {'pos': (900.016, 959.477, 127.227), 'rot': None, 'rot_quat': (-0.046136282384396, 0.018260028213263, 0.94000166654587, 0.3375423848629)}
         # surface road 3 (start at top of hill)
@@ -49,14 +54,12 @@ def spawn_point(scenario_locale, spawn_point ='default'):
         return {'pos': (956.013, 838.735, 134.014), 'rot': None, 'rot_quat': (0.020984912291169, 0.037122081965208, -0.31912142038345, 0.94675397872925)}
         # surface road 5 (ramp past shady el)
         #return {'pos':(166.287, 812.774, 102.328), 'rot': None, 'rot_quat':(0.0038638345431536, -0.00049926445353776, 0.60924011468887, 0.79297626018524)}
-        # entry ramp going opposite way
-        return {'pos': (850.136, 946.166, 123.827), 'rot': None, 'rot_quat': (-0.030755277723074, 0.016458060592413, 0.37487033009529, 0.92642092704773)}
-        # right after toll
+        # highway #1 entry ramp going opposite way
+        #return {'pos': (850.136, 946.166, 123.827), 'rot': None, 'rot_quat': (-0.030755277723074, 0.016458060592413, 0.37487033009529, 0.92642092704773)}
+        # highway #2 (right after toll)
         return {'pos': (-852.024, -517.391 + lanewidth, 106.620), 'rot': None, 'rot_quat': (0, 0, 0.926127, -0.377211)}
         #return {'pos':(-717.121, 101, 118.675), 'rot':None, 'rot_quat':(0, 0, 0.3826834, 0.9238795)}
         return {'pos': (-717.121, 101, 118.675), 'rot': None, 'rot_quat': (0, 0, 0.918812, -0.394696)}
-        # racetrack
-        return {'pos': (395.125, -247.713, 145.67), 'rot': None, 'rot_quat': (0, 0, 0.700608, 0.713546)}
     elif scenario_locale == 'smallgrid':
         return {'pos':(0.0, 0.0, 0.0), 'rot':None, 'rot_quat':(0, 0, 0.3826834, 0.9238795)}
     elif scenario_locale == 'automation_test_track':
@@ -217,9 +220,30 @@ def perturb_part_config(model, var, val):
     perturbed_pc = ""
     return perturbed_pc
 
-def run_scenario_ai_version(vehicle_model='etk800', deflation_pattern=[0,0,0,0]):
+def perturb_part_config(model, var, val):
+    pristine_pc = "C:/Users/merie/Documents/BeamNG.research/vehicles/{}/pristine.pc".format(model)
+    perturbed_pc = "C:/Users/merie/Documents/BeamNG.research/vehicles/{}/{}{}.pc".format(model, var, val)
+    with open(pristine_pc) as f:
+        data = json.load(f)
+        data['vars'][var] = val
+        with open(perturbed_pc) as f2:
+            json.dump(data, f2)
+    perturbed_pc = ""
+    return perturbed_pc
+
+
+def run_spawn(vehicle_model='etk800', deflation_pattern=[0,0,0,0]):
     global base_filename, default_color, default_scenario, setpoint
     global prev_error
+    # 080.097 | I | BeamNGVehicle::spawnObject | Spawning
+    # object
+    # 'hopper'
+    # with config: vehicles / hopper / crawler.pc
+    # 081.199 | I | GELua.main | Player  # 0 vehicle switched from: nil to: id 8496 (vehicles/hopper/)
+    vehicle_loadfile = 'vehicles/hopper/crawler.pc'
+    # setup DNN model + weights
+    m = Model()
+    model = m.define_model_BeamNG("BeamNGmodel-5.h5")
 
     random.seed(1703)
     setup_logging()
@@ -231,7 +255,7 @@ def run_scenario_ai_version(vehicle_model='etk800', deflation_pattern=[0,0,0,0])
                       licence='LOWPRESS', color=default_color)
     vehicle = setup_sensors(vehicle)
     spawn = spawn_point(default_scenario, 'highway')
-    scenario.add_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'])
+    # scenario.add_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'])
 
     # Compile the scenario and place it in BeamNG's map folder
     scenario.make(beamng)
@@ -239,64 +263,7 @@ def run_scenario_ai_version(vehicle_model='etk800', deflation_pattern=[0,0,0,0])
     # Start BeamNG and enter the main loop
     bng = beamng.open(launch=True)
 
-    bng.hide_hud()
-    bng.set_deterministic()  # Set simulator to be deterministic
-    bng.set_steps_per_second(60)  # With 60hz temporal resolution
-
-    # Load and start the scenario
-    bng.load_scenario(scenario)
-    bng.start_scenario()
-
-    # Put simulator in pause awaiting further inputs
-    bng.pause()
-    assert vehicle.skt
-    bng.resume()
-
-    vehicle.ai_set_mode('span')
-    vehicle.ai_drive_in_lane(True)
-    damage_prev = None
-    runtime = 0.0
-    traj = []
-    for _ in range(650):
-        damage = bng.poll_sensors(vehicle)['damage']
-        new_damage = diff_damage(damage, damage_prev)
-        damage_prev = damage
-        vehicle.update_vehicle()
-        traj.append(vehicle.state['pos'])
-        if new_damage > 0.0:
-            break
-        bng.step(5)
-        runtime += (0.05)
-    bng.close()
-    return traj
-
-def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0]):
-    global base_filename, default_color, default_scenario, setpoint
-    global prev_error
-    #vehicle_loadfile = 'vehicles/pickup/pristine.save.json'
-    # setup DNN model + weights
-    m = Model()
-    model = m.define_model_BeamNG("BeamNGmodel-5.h5")
-
-    random.seed(1703)
-    setup_logging()
-
-    #beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
-    beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1clean')
-    scenario = Scenario(default_scenario, 'research_test')
-    vehicle = Vehicle('ego_vehicle', model=vehicle_model,
-                      licence='LOWPRESS', color=default_color)
-    vehicle = setup_sensors(vehicle)
-    spawn = spawn_point(default_scenario, 'highway')
-    scenario.add_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'])
-
-    # Compile the scenario and place it in BeamNG's map folder
-    scenario.make(beamng)
-
-    # Start BeamNG and enter the main loop
-    bng = beamng.open(launch=True)
-
-    #bng.hide_hud()
+    # bng.hide_hud()
     bng.set_deterministic()  # Set simulator to be deterministic
     bng.set_steps_per_second(100)  # With 60hz temporal resolution
 
@@ -304,121 +271,115 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0]):
     bng.load_scenario(scenario)
     bng.start_scenario()
 
+    # load part config
+    #pc = vehicle.get_part_config()
+    # loadfile = 'vehicles/hopper/crawler.json'
+    # vehicle.load(loadfile)
+    # vehicle.update_vehicle()
+
+    bng.spawn_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'], partConfig='vehicles/hopper/semi-test.pc')
     # Put simulator in pause awaiting further inputs
     bng.pause()
     assert vehicle.skt
-    #bng.resume()
+    vehicle.control(throttle=0.0, steering=0.0, brake=1.0)
+    # bng.resume()
 
     # perturb vehicle
+    before_state = copy.deepcopy(vehicle.state)
     print("vehicle position before deflation via beamstate:{}".format(vehicle.get_object_position()))
-    print("vehicle position before deflation via vehicle state:{}".format(vehicle.state))
+    print("vehicle position before deflation via vehicle state:{}".format(before_state))
     image = bng.poll_sensors(vehicle)['front_cam']['colour'].convert('RGB')
+    img = m.process_image(image)
+    before_prediction = model.predict(img)
+    before_state["prediction"] = before_prediction
     plt.imshow(image)
     plt.pause(0.01)
-    vehicle.deflate_tires(deflation_pattern)
+    if deflation_pattern != [0,0,0,0]:
+        print("deflating according to pattern {}".format(deflation_pattern))
+        vehicle.deflate_tires(deflation_pattern)
+        time.sleep(1)
     vehicle.update_vehicle()
+    after_state = copy.deepcopy(vehicle.state)
     print("vehicle position after deflation via beamstate:{}".format(vehicle.get_object_position()))
-    print("vehicle position after deflation via vehicle state:{}".format(vehicle.state))
+    print("vehicle position after deflation via vehicle state:{}".format(after_state))
     image = bng.poll_sensors(vehicle)['front_cam']['colour'].convert('RGB')
+    img = m.process_image(image)
+    after_prediction = model.predict(img)
+    after_state["prediction"] = after_prediction
     plt.imshow(image)
     plt.pause(0.01)
-
-    bng.resume()
-    #vehicle.break_all_breakgroups()
-    #vehicle.break_hinges()
-    #vehicle_loadfile = 'vehicles/etk800/fronttires_0psi.pc'
-    #vehicle_loadfile = 'vehicles/etk800/backtires_0psi.pc'
-    # vehicle_loadfile = 'vehicles/etk800/chassis_forcefeedback201.pc'
-    #vehicle.load_pc(vehicle_loadfile, False)
-
-    wheelspeed = 0.0; throttle = 0.0; prev_error = setpoint; damage_prev = None; runtime = 0.0
-    kphs = []; traj = []
-    damage = None
-    final_img = None
-    # Send random inputs to vehice and advance the simulation 20 steps
-    for _ in range(1024):
-        # collect images
-        image = bng.poll_sensors(vehicle)['front_cam']['colour'].convert('RGB')
-        img = m.process_image(image)
-        prediction = model.predict(img)
-
-        # control params
-        kph = ms_to_kph(wheelspeed)
-        throttle = throttle_PID(kph, dt)
-        brake = 0
-        if setpoint < kph:
-            brake = 0.0 #throttle / 10000.0
-            throttle = 0.0
-        steering = float(prediction[0][0]) #random.uniform(-1.0, 1.0)
-        vehicle.control(throttle=throttle, steering=steering, brake=brake)
-
-        steering_state = bng.poll_sensors(vehicle)['electrics']['steering']
-        steering_input = bng.poll_sensors(vehicle)['electrics']['steering_input']
-        avg_wheel_av = bng.poll_sensors(vehicle)['electrics']['avg_wheel_av']
-        wheelspeed = bng.poll_sensors(vehicle)['electrics']['wheelspeed']
-        damage = bng.poll_sensors(vehicle)['damage']
-        new_damage = diff_damage(damage, damage_prev)
-        damage_prev = damage
-        vehicle.update_vehicle()
-        traj.append(vehicle.state['pos'])
-
-
-        # #print("steering state: {}".format(steering_state))
-        # print("AI steering_input: {}".format(steering_input))
-        #print("avg_wheel_av: {}".format(avg_wheel_av))
-        # print("DAVE2 steering prediction: {}".format(float(prediction[0][0])))
-        # print("throttle:{}".format(throttle))
-        # print("brake:{}".format(brake))
-        # print("kph: {}".format(ms_to_kph(wheelspeed)))
-        # print("new_damage:{}".format(new_damage))
-        # print("\n")
-        kphs.append(ms_to_kph(wheelspeed))
-        if new_damage > 0.0:
-            final_img = image
-            break
-        bng.step(5)
-        runtime += (0.05)
-    #     print("runtime:{}".format(round(runtime, 2)))
-    # print("time to crash:{}".format(round(runtime, 2)))
     bng.close()
-    avg_kph = float(sum(kphs)) / len(kphs)
-    plt.imshow(final_img)
-    plt.pause(0.01)
-    return runtime, avg_kph, damage['damage'], kphs, traj
+    return before_state, after_state
+
+
+# returns angle between two vectors in euler angle
+def angle_between_vectors(a, b):
+    unit_vec_1 = a / np.linalg.norm(a)
+    unit_vec_2 = b / np.linalg.norm(b)
+    dot_product = np.dot(unit_vec_1, unit_vec_2)
+    angle = np.arccos(dot_product)
+    return math.degrees(angle)
+
+def distance(a,b):
+    return math.sqrt(math.pow(a[0]-b[0],2) + math.pow(a[1]-b[1],2) + math.pow(a[2]-b[2],2))
+
+# keys: 'vel' 'pos' 'dir' 'front' 'up' 'prediction'
+def diff_states(before_state, after_state):
+    diffs = {}
+    for k in before_state.keys():
+        if k == 'dir' or k == 'up':
+            diffs[k] = angle_between_vectors(after_state[k], before_state[k])
+        elif k == 'pos' or k == 'front':
+            diffs[k] = distance(before_state[k], after_state[k])
+        elif k == 'prediction':
+            diffs[k] = after_state[k][0][0] - before_state[k][0][0]
+        else:
+            diffs[k] = [a_i - b_i for a_i, b_i in zip(after_state[k], before_state[k])]
+    return diffs
+
+def get_averages(states):
+    dirs = [state['dir'] for state in states]
+    ups = [state['up'] for state in states]
+    poss = [state['pos'] for state in states]
+    fronts = [state['front'] for state in states]
+    predictions = [state['prediction'] for state in states]
+    avgs = {}
+    avgs['dir'] = sum(dirs)/len(dirs)
+    avgs['up'] = sum(ups) / len(ups)
+    avgs['pos'] = sum(poss) / len(poss)
+    avgs['front'] = sum(fronts) / len(fronts)
+    avgs['prediction'] = sum(predictions) / len(predictions)
+    return avgs
+
 
 def main():
     global base_filename, default_color, default_scenario, setpoint, integral
     global prev_error
     global centerline
-    deflation_patterns = [ [0,0,0,0],
-                           [1,1,1,1],
-                           [1,0,0,1],
-                            [0,1,1,0],
-                            [1,0,1,0],
-                            [0,1,0,1]]
-    vehicles = ['hopper', 'roamer', 'pickup', 'van', 'miramar', 'semi', 'etk800']
-    centerline = run_scenario_ai_version()
-    print("centerline:{}".format(centerline))
+    deflation_patterns = [[0,0,0,0],
+                          [1,1,1,1],
+                          [0,1,0,1],  # (DRIVERS SIDE TIRES)
+                          [1, 0, 1, 0],  # (PASSENGER SIDE TIRES)
+                          [1, 0, 0, 1],  # (REAR TIRES)
+                          [0, 1, 1, 0]  # (FRONT TIRES)
+                          ]
+    #1171.208|I|BeamNGVehicle::spawnObject|Spawning object 'hopper' with config: vehicles/hopper/crawler.pc
+    vehicles = ['hopper'] #, 'hopper', 'miramar'] #, 'roamer', 'pickup', 'van', 'miramar', 'semi', 'etk800']
+    output_string = ""
     for v in vehicles:
         for df in deflation_patterns:
-            all_kphs = []
-            points = []
-            r = 0; a = 0; d = 0
+            states = []
             for i in range(10):
-                integral = 0.0
-                prev_error = 0.0
-                rt, av, d, kphs, traj = run_scenario(v, df)
-                r += rt / 10.0
-                a += av / 10.0
-                d += d / 10.0
-                all_kphs = all_kphs + kphs
-                points.append(copy.deepcopy(traj))
-                print("RUN {}, runtime:{} avg_kph:{}, std dev kphs:{}".format(i, rt, av, statistics.stdev(kphs)))
-            plot_deviation(points, v, df, centerline)
-            dist_from_centerline = calc_deviation_from_center(centerline, points)
-            print("ALL RUNS for vehicle {} with deflation pattern {}:"
-                  "\n\taverage runtime:{} average kph:{}, std dev kph:{}, average damage:{}, stdev from centerline:{}"
-                  .format(v, df, r, a, statistics.stdev(all_kphs), d, dist_from_centerline))
+                before_state, after_state = run_spawn(v, df)
+                diffs = diff_states(before_state, after_state)
+                states.append(copy.deepcopy(diffs))
+                tmp = "Vehicle {} with deflation pattern {}:\n\tbefore:{}\n\tafter:{}\n\tdiff:{}".format(v, df, before_state, after_state, diffs)
+                print(tmp)
+            avgs = get_averages(states)
+            diffstr = "Vehicle {} with deflation pattern {}:\n\taveraged diff:{}".format(v, df, avgs)
+            output_string = "{}\n{}".format(output_string, diffstr)
+    print("\n\nOUTPUT FOR ALL RUNS:\n{}".format(output_string))
+
 
 
 if __name__ == '__main__':

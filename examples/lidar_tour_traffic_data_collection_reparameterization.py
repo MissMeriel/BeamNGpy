@@ -195,7 +195,8 @@ def diff_damage(damage, damage_prev):
 def run_scenario(traffic=2, run_number=0):
     global sp
     setup_logging()
-    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
+    #beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
+    beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1')
     scenario = Scenario('west_coast_usa', 'lidar_tour',
                         description='Tour through the west coast gathering '
                                     'Lidar data')
@@ -294,9 +295,9 @@ def main():
     times = []
     crashes = 0.0
     total_runs = 0.0
-    # for t in range(6,7):
-    for t in range(6,11):
-        for i in range(100,200):
+    # for t in range(9,10):
+    for t in [10]:
+        for i in range(194,200):
             begin = time.time()
             crashed = run_scenario(traffic=t, run_number=i)
             tt = time.time() - begin

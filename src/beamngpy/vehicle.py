@@ -500,6 +500,7 @@ class Vehicle:
         self.send(data)
         resp = self.recv()
         assert resp['type'] == 'PartOptions'
+        print("resp:{}".format(resp))
         return resp['options']
 
     def get_part_config(self):
@@ -802,4 +803,12 @@ class Vehicle:
         data = dict(type='BreakAllBreakgroups')
         self.send(data)
 
+    def get_object_position(self):
+        data = dict(type='GetBeamstatePosition')
+        print("Sending data to socket...")
+        self.send(data)
+        resp = self.recv()
+        print("Received response from socket {}".format(resp))
+        assert resp['type'] == 'GetBeamstatePosition'
+        return resp['pos']
 

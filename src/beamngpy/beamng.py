@@ -417,6 +417,8 @@ class BeamNGpy:
         vehicles = scenario.vehicles
         for vehicle in vehicles.keys():
             self.connect_vehicle(vehicle)
+            print("connected vehicle {}".format(vehicle.vid))
+        print("connected all vehicles")
 
     def load_scenario(self, scenario):
         """
@@ -1039,7 +1041,7 @@ class BeamNGpy:
         return resp['name']
 
     def spawn_vehicle(self, vehicle, pos, rot,
-                      rot_quat=(0, 0, 0, 1), cling=True):
+                      rot_quat=(0, 0, 0, 1), cling=True, partConfig=None):
         """
         Spawns the given :class:`.Vehicle` instance in the simulator. This
         method is meant for spawning vehicles *during the simulation*. Vehicles
@@ -1061,6 +1063,8 @@ class BeamNGpy:
         data['name'] = vehicle.vid
         data['model'] = vehicle.options['model']
         data['pos'] = pos
+        if partConfig:
+            data['partConfig'] = partConfig
         if rot:
             raise_rot_deprecation_warning()
             rot_quat = angle_to_quat(rot)

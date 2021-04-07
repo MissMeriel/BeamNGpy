@@ -542,6 +542,15 @@ M.handleBreakAllBreakgroups = function(msg)
   log('I', 'attempting beamstate.breakAllBreakgroups')
   beamstate.breakAllBreakgroups()
 end
+
+M.handleGetBeamstatePosition = function(msg)
+  local position = beamstate.getPositionRollPitch()
+  local response = {type = 'GetBeamstatePosition', data = response}
+  response['pos'] = position
+  log('I', 'sending back response ' .. tostring(response))
+  rcom.sendMessage(skt, response)
+end
+
 -- ---------------------------------------------------------------------
 
 

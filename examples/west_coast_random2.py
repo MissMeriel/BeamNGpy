@@ -40,7 +40,8 @@ def main():
 
 #    plt.ion()
 
-    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
+    #beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
+    beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1')
 
     # Create a scenario in west_coast_usa
     scenario = Scenario('west_coast_usa', 'research_test')
@@ -97,7 +98,7 @@ def main():
         bng.pause()
 
         assert vehicle.skt
-
+        vehicle.deflate_tires([1,1,1,1])
         # Send random inputs to vehice and advance the simulation 20 steps
         for _ in range(1024):
             throttle = random.uniform(0.0, 1.0)
