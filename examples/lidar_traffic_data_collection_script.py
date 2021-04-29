@@ -26,7 +26,8 @@ from beamngpy.sensors import Lidar
 from beamngpy.visualiser import LidarVisualiser
 import time
 
-sp = 'racetrack4'
+sp = 'racetrack5'
+lanewidth = 3.75
 
 def spawn_point(spawn_point):
     if spawn_point == 'highway':
@@ -39,6 +40,8 @@ def spawn_point(spawn_point):
         return {'pos': (350.125, -257.713, 145.67), 'rot': None, 'rot_quat': (0, 0, 0.700608, 0.713546)}
     elif spawn_point == 'racetrack4':
         return {'pos': (335.125, -252.713, 145.67), 'rot': None, 'rot_quat': (0, 0, 0.700608, 0.713546)}
+    else:
+        return {'pos': (-852.024 , -517.391- lanewidth, 106.620), 'rot': None, 'rot_quat': (0, 0, 0.926127, -0.377211), 'lane': 3}
 
 def setup_sensors(vehicle):
     # Set up sensors
@@ -101,7 +104,7 @@ def main():
     global sp
     setup_logging()
 
-    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
+    beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1clean')
     scenario = Scenario('west_coast_usa', 'lidar_tour',
                         description='Tour through the west coast gathering '
                                     'Lidar data')
@@ -109,7 +112,7 @@ def main():
     vehicle = Vehicle('ego_vehicle', model='etk800', licence='LIDAR', color='Red')
     lidar = Lidar()
     lidar.__init__(offset=(0, 0, 1.7), direction=(-0.707, -0.707, 0), vres=32,
-                   vangle=0.1, rps=2200000, hz=20, angle=360, max_dist=200,
+                   vangle=0.01, rps=2200000, hz=20, angle=360, max_dist=200,
                    visualized=True)
     vehicle.attach_sensor('lidar', lidar)
     ego_sp = spawn_point(sp)

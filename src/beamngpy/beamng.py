@@ -76,7 +76,7 @@ def setup_logging(log_file=None, activateWarnings=True):
 
     if activateWarnings:
         warnings.simplefilter('default')
-        log.captureWarnings(True)
+        log.captureWarnings(False)
 
     log.info('Started BeamNGpy logging.')
 

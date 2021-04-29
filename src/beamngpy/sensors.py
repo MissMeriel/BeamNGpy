@@ -200,6 +200,11 @@ class Camera(Sensor):
         self.depth_shmem = None
         self.annotation_handle = None
         self.annotation_shmem = None
+        # meriel added to include extra camera info
+        self.direction_handle = None
+        self.direction_shmem = None
+        self.pos_handle = None
+        self.pos_shmem = None
 
     def attach(self, vehicle, name):
         """
@@ -234,6 +239,12 @@ class Camera(Sensor):
         # log.debug('Bound memory for annotation: %s',
         #           self.annotation_handle)
 
+        # meriel added to include pos,direction
+        self.direction_handle = '{}.{}.{}.direction'.format(pid, prefix, name)
+        self.direction_shmem = mmap.mmap(0, size, self.direction_handle)
+        self.pos_handle = '{}.{}.{}.pos'.format(pid, prefix, name)
+        self.pos_shmem = mmap.mmap(0, size, self.pos_handle)
+
     def detach(self, vehicle, name):
         """
         This method is called when the camera is detached from the vehicle. It
@@ -257,6 +268,13 @@ class Camera(Sensor):
             #           self.annotation_handle)
             self.annotation_shmem.close()
 
+        if self.direction_shmem:
+            log.debug('Unbinding memory for color: %s', self.direction_handle)
+            self.direction_shmem.close()
+
+        if self.pos_shmem:
+            self.pos_shmem.close()
+
     def connect(self, bng, vehicle):
         """
         This method is called when the vehicle is set up in the simulation.
@@ -278,6 +296,12 @@ class Camera(Sensor):
         if self.annotation_shmem:
             bng.open_shmem(self.annotation_handle, size)
 
+        if self.direction_shmem:
+            bng.open_shmem(self.direction_handle, size)
+
+        if self.pos_shmem:
+            bng.open_shmem(self.pos_handle, size)
+
     def disconnect(self, bng, vehicle):
         """
         This method is called when the vehicle is disconnected from the
@@ -296,6 +320,12 @@ class Camera(Sensor):
 
         if self.annotation_shmem:
             bng.close_shmem(self.annotation_handle)
+
+        if self.direction_shmem:
+            bng.close_shmem(self.direction_handle)
+
+        if self.pos_shmem:
+            bng.close_shmem(self.pos_handle)
 
     def encode_engine_request(self):
         """
@@ -340,10 +370,12 @@ class Camera(Sensor):
         Returns:
             The decoded response as a dictionary.
         """
-        decoded = dict(type='Camera')
+        #decoded = dict(type='Camera')
+        decoded = dict()
         img_w = resp['width']
         img_h = resp['height']
-
+        decoded['position'] = np.fromstring(resp['pos'], dtype=float, sep=', ')
+        decoded['rotation'] = np.fromstring(resp['rot'], dtype=float, sep=', ')
         size = img_w * img_h * 4
 
         if self.colour_shmem:

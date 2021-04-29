@@ -408,6 +408,8 @@ M.handleDespawnVehicle = function(msg)
   rcom.sendACK(skt, 'VehicleDespawned')
 end
 
+
+
 sensors.Camera = function(req, callback)
   local offset, orientation, up
   local pos, direction, rot, fov, resolution, nearFar, vehicle, vehicleObj, data
@@ -423,6 +425,7 @@ sensors.Camera = function(req, callback)
 
     up = vec3(vehicle:getDirectionVectorUp())
     orientation = quatFromDir(orientation, up)
+    --log("E", "orientation=" .. tostring(orientation))
     offset = vec3(vehicle:getPosition())
   else
     orientation = quatFromEuler(0, 0, 0)
@@ -437,25 +440,45 @@ sensors.Camera = function(req, callback)
   resolution = req['resolution']
   nearFar = req['near_far']
 
+  --log("E", "quatFromDir(direction, vec3(0, 0, 1))=" .. tostring(quatFromDir(direction, vec3(0, 0, 1))))
   rot = quatFromDir(direction, vec3(0, 0, 1)) * orientation
 
   pos = req['pos']
   pos = vec3(pos[1], pos[2], pos[3])
   if req['vehicle'] then
     pos = offset + orientation * pos
+    --log("E", "pos=" .. tostring(pos))
+    --log("E", "offset + orientation * pos=" .. tostring(offset + orientation * pos))
+    --log("E", "orientation * pos = " .. tostring(orientation * pos))
+    --log("E", "offset+orientation=" .. tostring(offset+orientation))
   else
     pos = offset + pos
   end
   pos = Point3F(pos.x, pos.y, pos.z)
 
   rot = QuatF(rot.x, rot.y, rot.z, rot.w)
-
+  -- meriel added
+  log("E", "CAMERA POSITION in sensors.Camera :" .. tostring(pos) .. " ROT:" .. tostring(rot))
+  --log("E", "CAMERA RPY?: " .. tostring(core_camera.getRollPitchYaw()))
+  --log("I", "CAMERA POSITION in sensors.Camera :" .. tostring(obj:getCameraDataById(vid)))
+  --for index, data in ipairs(core_camera.getCameraDataById(vid)) do
+  --  log("I", tostring(index))
+  --end
   resolution = Point2F(resolution[1], resolution[2])
   nearFar = Point2F(nearFar[1], nearFar[2])
 
   local data = Engine.renderCameraShmem(color, depth, annotation, pos, rot, resolution, fov, nearFar)
+  data['pos'] = tostring(pos)
+  data['rot'] =  tostring(rot)
+  --for index, d in ipairs(data) do
+  --  log("I", tostring(index) .. " data:" .. tostring(d))
+  --end
 
   callback(data)
+  --log("I", "callback at the end of sensors.Camera:" .. tostring(callback) .. " data:" .. tostring(data))
+  --for index, d in pairs(data) do
+  --  log("I", "data index:" .. tostring(index) .. " data d:" .. tostring(d))
+  --end
 end
 
 sensors.Lidar = function(req, callback)
@@ -476,6 +499,11 @@ end
 
 local function getSensorData(request, callback)
   local response, sensor_type, handler
+    -- meriel added
+  --log("E", "in researchGE, getSensorData(" .. tostring(request) .. ")")
+  --for index, data in pairs(request) do
+  --  log("I", "     index:" .. tostring(index) .. " data:" .. tostring(data))
+  --end
   sensor_type = request['type']
   handler = sensors[sensor_type]
   if handler ~= nil then
@@ -999,6 +1027,16 @@ M.handleSetRelativeCam = function(msg)
       rot = quat(rot[1], rot[2], rot[3], rot[4]):toEulerYXZ()
       core_camera.getCameraDataById(vid)['relative'].rot = rot
     end
+    -- meriel added
+    log("I", "CAMERA POSITION in M.handleSetRelativeCam:" .. tostring(core_camera.getCameraDataById(vid)))
+    for index, data in ipairs(core_camera.getCameraDataById(vid)) do
+      log("I", tostring(index))
+
+      --for key, value in pairs(data) do
+      --    log('I', '\t' .. tostring(key) .. " " .. tostring(value))
+      --end
+    end
+
 
     rcom.sendACK(skt, 'RelativeCamSet')
   end

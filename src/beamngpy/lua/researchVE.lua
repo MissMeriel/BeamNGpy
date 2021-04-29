@@ -82,12 +82,18 @@ M.onDebugDraw = function()
 end
 
 local function getVehicleState()
+  -- provides rpy in radians
+  local roll, pitch, yaw = obj:getRollPitchYaw()
+  log("E", "roll:" .. tostring(roll))
   local vehicleState = {
     pos = obj:getPosition(),
     dir = obj:getDirectionVector(),
     up = obj:getDirectionVectorUp(),
     vel = obj:getVelocity(),
-    front = obj:getFrontPosition()
+    front = obj:getFrontPosition(),
+    roll = nil,
+    pitch = nil,
+    yaw = nil
   }
   vehicleState['pos'] = {
     vehicleState['pos'].x,
@@ -117,6 +123,18 @@ local function getVehicleState()
     vehicleState['front'].x,
     vehicleState['front'].y,
     vehicleState['front'].z
+  }
+
+  vehicleState['roll'] = {
+    roll
+  }
+
+    vehicleState['pitch'] = {
+    pitch
+  }
+
+    vehicleState['yaw'] = {
+    yaw
   }
 
   return vehicleState
@@ -184,7 +202,11 @@ end
 
 local function getSensorData(request)
   local response, sensor_type, handler
-
+  -- meriel added
+  --log("E", "in researchVE, getSensorData(" .. tostring(request) .. ")")
+  --for index, data in pairs(request) do
+  --  log("I", "     index:" .. tostring(index) .. " data:" .. tostring(data))
+  --end
   sensor_type = request['type']
   handler = sensorHandlers[sensor_type]
   if handler ~= nil then
@@ -529,8 +551,10 @@ M.handleLoadPartConfig = function(msg)
 end
 
 M.handleDeflateTires = function(msg)
-  log('I', 'attempting beamstate.deflateSelectTires')
+  --log('I', 'attempting beamstate.deflateSelectTires')
+  log('I', 'attempting beamstate.deflateTires')
   beamstate.deflateSelectTires(msg['tires'])
+  --beamstate.deflateTires()
 end
 
 M.handleBreakHinges = function(msg)
@@ -548,6 +572,7 @@ M.handleGetBeamstatePosition = function(msg)
   local response = {type = 'GetBeamstatePosition', data = response}
   response['pos'] = position
   log('I', 'sending back response ' .. tostring(response))
+
   rcom.sendMessage(skt, response)
 end
 

@@ -118,6 +118,10 @@ def setup_lidar(mountpoint='roof'):
     else:
         print("returning lidar")
         return lidar
+    # delete later:
+    lidar.__init__(offset=(0, 0, 1.7), direction=(-0.707, -0.707, 0), vres=32,
+                   vangle=0.01, rps=2200000, hz=20, angle=360, max_dist=200,
+                   visualized=True)
     return lidar
 
 def traffic_vehicles(length):
@@ -195,7 +199,6 @@ def diff_damage(damage, damage_prev):
 def run_scenario(traffic=2, run_number=0):
     global sp
     setup_logging()
-    #beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.1')
     beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1')
     scenario = Scenario('west_coast_usa', 'lidar_tour',
                         description='Tour through the west coast gathering '
@@ -241,10 +244,6 @@ def run_scenario(traffic=2, run_number=0):
     vehicle.ai_set_mode('traffic')
     #"DecalRoad31765_8"
     vehicle.ai_drive_in_lane(False)
-    #vehicle.ai_set_speed(16, mode='limit')
-    #vehicle.ai_set_target('traffic')
-    #vehicle.ai_set_aggression(1.5)
-    #737.385 | I | GELua.core_multiSpawn.multiSpawn | Spawning vehicle group 'traffic' with 3 vehicles 737.391 | I | BeamNGVehicle::spawnObject | Spawning object 'coupe' with config: vehicles / coupe / base_M.pc
     vehicle.ai_set_aggression(2.0)
     bng.start_traffic(tvs)
     bng.switch_vehicle(vehicle)
@@ -252,7 +251,7 @@ def run_scenario(traffic=2, run_number=0):
     start = time.time()
     end = time.time()
     damage_prev = None
-    filename = 'H:/experiment2/{}_external_vehicles/trace_{}_external_vehicles_run_{}.csv'.format(traffic, traffic, run_number)
+    filename = 'H:/experiment2/{}_external_vehicles/trace_{}_external_vehicles_run_{}test.csv'.format(traffic, traffic, run_number)
     print("filename:{}".format(filename))
     crashed = 0
     #with open('H:/traffic_traces/{}externalvehicles/traffic_lidar_data_{}traffic_run{}.csv'.format(traffic, traffic, run_number), 'w') as f:
@@ -273,8 +272,8 @@ def run_scenario(traffic=2, run_number=0):
             if new_damage > 0:
                 print("new damage = {}\n".format(new_damage))
                 crashed = 1
-            f.write("{},{},{},{},{},{},{}\n".format(totalsecs, v_state['pos'], v_state['dir'], v_state['vel'],
-                                                 points.tolist(), str(new_damage), traffic))
+            # f.write("{},{},{},{},{},{},{}\n".format(totalsecs, v_state['pos'], v_state['dir'], v_state['vel'],
+            #                                      points.tolist(), str(new_damage), traffic))
             #print("Time passed since last step: {}".format(time.time() - end))
             end = time.time()
             #print("Time passed since scenario begun: {}\n".format(end - start))
@@ -296,7 +295,7 @@ def main():
     crashes = 0.0
     total_runs = 0.0
     # for t in range(9,10):
-    for t in [10]:
+    for t in [5]:
         for i in range(194,200):
             begin = time.time()
             crashed = run_scenario(traffic=t, run_number=i)
