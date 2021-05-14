@@ -84,7 +84,8 @@ end
 local function getVehicleState()
   -- provides rpy in radians
   local roll, pitch, yaw = obj:getRollPitchYaw()
-  log("E", "roll:" .. tostring(roll))
+  -- meriel added
+  --log("E", "roll:" .. tostring(roll))
   local vehicleState = {
     pos = obj:getPosition(),
     dir = obj:getDirectionVector(),

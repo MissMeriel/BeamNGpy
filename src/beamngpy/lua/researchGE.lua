@@ -440,14 +440,12 @@ sensors.Camera = function(req, callback)
   resolution = req['resolution']
   nearFar = req['near_far']
 
-  --log("E", "quatFromDir(direction, vec3(0, 0, 1))=" .. tostring(quatFromDir(direction, vec3(0, 0, 1))))
   rot = quatFromDir(direction, vec3(0, 0, 1)) * orientation
-
   pos = req['pos']
   pos = vec3(pos[1], pos[2], pos[3])
   if req['vehicle'] then
-    pos = offset + orientation * pos
     --log("E", "pos=" .. tostring(pos))
+    pos = offset + orientation * pos
     --log("E", "offset + orientation * pos=" .. tostring(offset + orientation * pos))
     --log("E", "orientation * pos = " .. tostring(orientation * pos))
     --log("E", "offset+orientation=" .. tostring(offset+orientation))
@@ -457,8 +455,9 @@ sensors.Camera = function(req, callback)
   pos = Point3F(pos.x, pos.y, pos.z)
 
   rot = QuatF(rot.x, rot.y, rot.z, rot.w)
+
   -- meriel added
-  log("E", "CAMERA POSITION in sensors.Camera :" .. tostring(pos) .. " ROT:" .. tostring(rot))
+  --log("E", "CAMERA POSITION in sensors.Camera :" .. tostring(pos) .. " ROT:" .. tostring(rot))
   --log("E", "CAMERA RPY?: " .. tostring(core_camera.getRollPitchYaw()))
   --log("I", "CAMERA POSITION in sensors.Camera :" .. tostring(obj:getCameraDataById(vid)))
   --for index, data in ipairs(core_camera.getCameraDataById(vid)) do
@@ -475,10 +474,6 @@ sensors.Camera = function(req, callback)
   --end
 
   callback(data)
-  --log("I", "callback at the end of sensors.Camera:" .. tostring(callback) .. " data:" .. tostring(data))
-  --for index, d in pairs(data) do
-  --  log("I", "data index:" .. tostring(index) .. " data d:" .. tostring(d))
-  --end
 end
 
 sensors.Lidar = function(req, callback)

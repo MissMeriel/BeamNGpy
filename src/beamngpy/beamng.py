@@ -1064,6 +1064,7 @@ class BeamNGpy:
         data['model'] = vehicle.options['model']
         data['pos'] = pos
         if partConfig:
+            print("INSIDE BEAMNG SPAWN_VEHICLE, THERE IS A PART CONFIG")
             data['partConfig'] = partConfig
         if rot:
             raise_rot_deprecation_warning()
@@ -1104,6 +1105,7 @@ class BeamNGpy:
             rot_quat = angle_to_quat(rot)
         data['rot'] = rot_quat
         data.update(vehicle.options)
+        print("DATA BEING SENT FROM SPAWN_VEHICLE:", data)
         self.send(data)
         resp = self.recv()
         self.connect_vehicle(vehicle)

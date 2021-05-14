@@ -119,9 +119,9 @@ def setup_lidar(mountpoint='roof'):
         print("returning lidar")
         return lidar
     # delete later:
-    lidar.__init__(offset=(0, 0, 1.7), direction=(-0.707, -0.707, 0), vres=32,
-                   vangle=0.01, rps=2200000, hz=20, angle=360, max_dist=200,
-                   visualized=True)
+    # lidar.__init__(offset=(0, 0, 1.7), direction=(-0.707, -0.707, 0), vres=32,
+    #                vangle=0.01, rps=2200000, hz=20, angle=360, max_dist=200,
+    #                visualized=True)
     return lidar
 
 def traffic_vehicles(length):

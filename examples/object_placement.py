@@ -9,7 +9,7 @@ from beamngpy import BeamNGpy, Vehicle, Scenario, ProceduralRing, StaticObject
 from beamngpy.sensors import Camera
 
 
-beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.0')
+beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1clean')
 
 scenario = Scenario('west_coast_usa', 'object_placement')
 

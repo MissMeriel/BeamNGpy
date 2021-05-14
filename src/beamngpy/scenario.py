@@ -432,7 +432,7 @@ class Scenario:
         self.objects.append(obj)
 
     def add_vehicle(self, vehicle, pos=(0, 0, 0),
-                    rot=None, rot_quat=(0, 0, 0, 1), cling=True):
+                    rot=None, rot_quat=(0, 0, 0, 1), cling=True, partsConfig=None):
         """
         Adds a vehicle to this scenario at the given position with the given
         orientation. This method has to be called before a scenario is started.
@@ -456,7 +456,7 @@ class Scenario:
 
         if self.bng:
             self.bng.spawn_vehicle(vehicle, pos, None, rot_quat=rot_quat,
-                                   cling=cling)  # todo
+                                   cling=cling, partConfig=partsConfig)  # todo
             self.transient_vehicles.add(vehicle)
 
     def remove_vehicle(self, vehicle):
