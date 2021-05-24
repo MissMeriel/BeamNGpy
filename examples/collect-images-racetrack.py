@@ -29,7 +29,7 @@ import scipy.misc
 #training_dir = 'training_images_hirochi_remove'
 default_scenario = 'industrial'
 spawnpoint = 'racetrackstartinggate'
-training_dir = 'H:/BeamNG_DAVE2_racetracks/training_images_{}-{}/'.format(default_scenario, spawnpoint)
+training_dir = 'H:/BeamNG_DAVE2_racetracks_all/training_images_{}-{}12/'.format(default_scenario, spawnpoint)
 default_model = 'hopper'
 setpoint = 40
 
@@ -161,7 +161,7 @@ def setup_sensors(vehicle):
     pos = (-0.5, 0.38, 1.3) # windshield
     # direction = (0, 1, 0)
     direction = (0, 1.0, 0)
-    fov = 90
+    fov = 50
     resolution = (1280,960) #(512, 512)
     front_camera = Camera(pos, direction, fov, resolution,
                           colour=True, depth=True, annotation=True)
@@ -180,7 +180,7 @@ def setup_sensors(vehicle):
 
     # Attach them
     vehicle.attach_sensor('front_cam', front_camera)
-    vehicle.attach_sensor('back_cam', back_camera)
+    # vehicle.attach_sensor('back_cam', back_camera)
     vehicle.attach_sensor('gforces', gforces)
     vehicle.attach_sensor('electrics', electrics)
     vehicle.attach_sensor('damage', damage)
@@ -305,8 +305,8 @@ def testrun(speed=11, risk=0.6):
             # collect images
             sensors = bng.poll_sensors(vehicle)
             image = sensors['front_cam']['colour'].convert('RGB')
-            full_filename = "{}{}{}.bmp".format(training_dir, base_filename, imagecount)
-            qualified_filename = "{}{}.bmp".format(base_filename, imagecount)
+            full_filename = "{}{}{}.jpg".format(training_dir, base_filename, imagecount)
+            qualified_filename = "{}{}.jpg".format(base_filename, imagecount)
 
             # collect ancillary data
             datafile.write('{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(qualified_filename,
@@ -375,7 +375,8 @@ def collection_run(speed=11, risk=0.6, num_samples=10000):
     random.seed(1703)
     setup_logging()
 
-    beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1clean', user='H:/BeamNG.research')
+    home = 'H:/BeamNG.research.v1.7.0.1clean' #'H:/BeamNG.tech.v0.21.3.0' #
+    beamng = BeamNGpy('localhost', 64256, home=home, user='H:/BeamNG.research')
     scenario = Scenario(default_scenario, 'research_test')
     # add barriers and cars to get the ego vehicle to avoid the barriers
     add_barriers(scenario)
@@ -411,52 +412,55 @@ def collection_run(speed=11, risk=0.6, num_samples=10000):
     start_time = time.time()
     # Send random inputs to vehicle and advance the simulation 20 steps
     imagecount = 0
+    timer = 0
     with open(f, 'w') as datafile:
         datafile.write('filename,timestamp,steering_input,throttle_input,brake_input,driveshaft,engine_load,fog_lights,fuel,'
                        'lowpressure,oil,oil_temperature,parkingbrake,rpm,water_temperature,wheelspeed\n')
         return_str = ''
         while imagecount < num_samples:
-            # collect images
             sensors = bng.poll_sensors(vehicle)
             image = sensors['front_cam']['colour'].convert('RGB')
-            full_filename = "{}{}{}.bmp".format(training_dir, base_filename, imagecount)
-            qualified_filename = "{}{}.bmp".format(base_filename, imagecount)
+            full_filename = "{}{}{}.png".format(training_dir, base_filename, imagecount)
+            qualified_filename = "{}{}.png".format(base_filename, imagecount)
+            timer = sensors['timer']['time']
+            steering = sensors['electrics']['steering_input']
+            if timer > 10 and abs(steering) >= 0.1:
+                # collect ancillary data
+                datafile.write('{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(qualified_filename,
+                                                    str(round(sensors['timer']['time'], 2)),
+                                                    sensors['electrics']['steering_input'],
+                                                    sensors['electrics']['throttle_input'],
+                                                    sensors['electrics']['brake_input'],
+                                                    sensors['electrics']['driveshaft'],
+                                                    sensors['electrics']['engine_load'],
+                                                    sensors['electrics']['fog_lights'],
+                                                    sensors['electrics']['fuel'],
+                                                    sensors['electrics']['lowpressure'],
+                                                    sensors['electrics']['oil'],
+                                                    sensors['electrics']['oil_temperature'],
+                                                    sensors['electrics']['parkingbrake'],
+                                                    sensors['electrics']['rpm'],
+                                                    sensors['electrics']['water_temperature'],
+                                                    sensors['electrics']['wheelspeed']))
+                # save the image
+                print(full_filename)
+                image.save(full_filename)
+                imagecount += 1
 
-            # collect ancillary data
-            datafile.write('{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(qualified_filename,
-                                                str(round(sensors['timer']['time'], 2)),
-                                                sensors['electrics']['steering_input'],
-                                                sensors['electrics']['throttle_input'],
-                                                sensors['electrics']['brake_input'],
-                                                sensors['electrics']['driveshaft'],
-                                                sensors['electrics']['engine_load'],
-                                                sensors['electrics']['fog_lights'],
-                                                sensors['electrics']['fuel'],
-                                                sensors['electrics']['lowpressure'],
-                                                sensors['electrics']['oil'],
-                                                sensors['electrics']['oil_temperature'],
-                                                sensors['electrics']['parkingbrake'],
-                                                sensors['electrics']['rpm'],
-                                                sensors['electrics']['water_temperature'],
-                                                sensors['electrics']['wheelspeed']))
-            # if sensors['timer']['time'] > 10:
-            #     kph = sensors['electrics']['wheelspeed'] * 3.6
-            #     vels.append(kph)
-            #     vel_dict[sensors['timer']['time']] = kph
-            #
-            # if distance(spawn_pt['pos'], vehicle.state['pos']) < 5 and sensors['timer']['time'] > 10:
-            #     reached_start = True
-            #     break
+                # if sensors['timer']['time'] > 10:
+                #     kph = sensors['electrics']['wheelspeed'] * 3.6
+                #     vels.append(kph)
+                #     vel_dict[sensors['timer']['time']] = kph
+                #
+                # if distance(spawn_pt['pos'], vehicle.state['pos']) < 5 and sensors['timer']['time'] > 10:
+                #     reached_start = True
+                #     break
 
             if sensors['damage']['damage'] > 0:
                 return_str = "CRASHED at timestep {} speed {}; QUITTING".format(round(sensors['timer']['time'], 2), round(sensors['electrics']['wheelspeed']*3.6, 3))
                 print(return_str)
                 break
 
-            # save the image
-            print(full_filename)
-            image.save(full_filename)
-            imagecount += 1
             bng.step(1, wait=True)
 
         bng.close()
@@ -471,7 +475,7 @@ def main():
     #         results = testrun(speed=s, risk=r)
             # results_string = "{}\n\nSPEED:{}, RISK={}\n{}".format(results_string, s, r, results)
     # print(results_string)
-    collection_run(speed=12, risk=0.6, num_samples=10000)
+    collection_run(speed=12, risk=0.7 , num_samples=10000)
 
 if __name__ == '__main__':
     main()

@@ -23,7 +23,7 @@ from scipy.spatial.transform import Rotation as R
 # globals
 default_color = 'White' #'Red'
 default_scenario = 'industrial'
-default_spawnpoint = 'racetrackleft'
+default_spawnpoint = 'racetrackstartinggate'
 dt = 20
 integral = 0.0
 prev_error = 0.0
@@ -117,7 +117,8 @@ def get_spawn_point(scenario_locale, spawn_point ='default'):
             return {'pos': (184.983, -41.0821, 42.7761), 'rot': None, 'rot_quat': (-0.005, 0.001, 0.299, 0.954)}
         elif spawn_point == 'racetrackleft':
             return {'pos': (216.578, -28.1725, 42.7788), 'rot': None, 'rot_quat': (-0.0051, -0.003147, -0.67135, 0.74112)}
-
+        elif spawn_point == 'racetrackstartinggate':
+            return {'pos':(160.905, -91.9654, 42.8511), 'rot': None, 'rot_quat':(-0.0036226876545697, 0.0065293218940496, 0.92344760894775, -0.38365218043327)}
 
 def setup_sensors(vehicle):
     # Set up sensors
@@ -127,9 +128,11 @@ def setup_sensors(vehicle):
     # pos = (-0.5, 0.4, 1.0)  # dashboard
     # pos = (-0.5, 0.38, 1.5) # roof
     # pos = (-0.5, 0.38, 1.1) # windshield
-    direction = (0, 1, 0) #(0, 0.75, -1.5) #(0, 0.75, 0) #(0,1,0)
-    fov = 120
-    resolution = (512, 512)
+    pos = (-0.5, 0.38, 1.3) # windshield
+    # direction = (0, 1, 0)
+    direction = (0, 1.0, 0)
+    fov = 50
+    resolution = (1280,960) #(512, 512)
     front_camera = Camera(pos, direction, fov, resolution,
                           colour=True, depth=True, annotation=True)
     pos = (-0.5, 0.38, 1.1) # windshield
@@ -345,30 +348,10 @@ def run_scenario_ai_version(vehicle_model='etk800', deflation_pattern=[0,0,0,0],
     return results
 
 def euler_from_quaternion(x, y, z, w):
-    """
-    Convert a quaternion into euler angles (roll, pitch, yaw)
-    roll is rotation around x in radians (counterclockwise)
-    pitch is rotation around y in radians (counterclockwise)
-    yaw is rotation around z in radians (counterclockwise)
-    """
-    t0 = +2.0 * (w * x + y * z)
-    t1 = +1.0 - 2.0 * (x * x + y * y)
-    roll_x = math.atan2(t0, t1)
-
-    t2 = +2.0 * (w * y - z * x)
-    t2 = +1.0 if t2 > +1.0 else t2
-    t2 = -1.0 if t2 < -1.0 else t2
-    pitch_y = math.asin(t2)
-
-    t3 = +2.0 * (w * z + x * y)
-    t4 = +1.0 - 2.0 * (y * y + z * z)
-    yaw_z = math.atan2(t3, t4)
-
-    # return roll_x, pitch_y, yaw_z # in radians
-    r = R.from_quat((x,y,z,w))
+    r = R.from_quat([x,y,z,w])
     return r.as_euler('xyz', degrees=True)
 
-def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_config=None):
+def run_comparison(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_config=None):
     global base_filename, default_color, default_scenario,default_spawnpoint, setpoint, steps_per_sec
     global integral, prev_error
     integral = 0.0
@@ -376,16 +359,16 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
 
     # setup DNN model + weights
     m = Model()
-    model = m.define_model_BeamNG("BeamNGmodel-5.h5")
+    model = m.define_model_BeamNG("BeamNGmodel-racetrack.h5")
 
     random.seed(1703)
     setup_logging()
 
     beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1clean')
     scenario = Scenario(default_scenario, 'research_test')
-    unperturbed_vehicle = Vehicle('unperturbed_vehicle', model=vehicle_model,
-                      licence='SAFE', color='Red')
-    unperturbed_vehicle = setup_sensors(unperturbed_vehicle)
+    # unperturbed_vehicle = Vehicle('unperturbed_vehicle', model=vehicle_model,
+    #                   licence='SAFE', color='Red')
+    # unperturbed_vehicle = setup_sensors(unperturbed_vehicle)
     vehicle = Vehicle('ego_vehicle', model=vehicle_model,
                       licence='EGO', color=default_color)
     vehicle = setup_sensors(vehicle)
@@ -393,7 +376,7 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
     scenario.add_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'])
     temp = copy.deepcopy(spawn['pos'])
     temp = [temp[0]+lanewidth, temp[1]+lanewidth, temp[2]]
-    scenario.add_vehicle(unperturbed_vehicle, pos=temp, rot=None, rot_quat=spawn['rot_quat'])
+    # scenario.add_vehicle(unperturbed_vehicle, pos=temp, rot=None, rot_quat=spawn['rot_quat'])
 
     # Compile the scenario and place it in BeamNG's map folder
     scenario.make(beamng)
@@ -432,7 +415,7 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
             print(key, temp[key])
     print('\nPERTURBED rearview_cam INFO:')
     return_str = "{}\nPERTURBED rearview_cam INFO:".format(return_str)
-    temp = bng.poll_sensors(vehicle)['rearview_cam']
+    # temp = bng.poll_sensors(vehicle)['rearview_cam']
     for key in temp:
         if key == 'rotation':
             degs = euler_from_quaternion(temp[key][0], temp[key][1], temp[key][2], temp[key][3])
@@ -442,7 +425,7 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
         elif key != "colour" and key != "annotation" and key != "depth":
             return_str = "{}\n{} {}".format(return_str, key, temp[key])
             print(key, temp[key])
-    rearview_img = bng.poll_sensors(vehicle)['rearview_cam']['colour'].convert('RGB')
+    # rearview_img = bng.poll_sensors(vehicle)['rearview_cam']['colour'].convert('RGB')
     headlight_img = bng.poll_sensors(vehicle)['headlight_cam']['colour'].convert('RGB')
     bng.step(steps_per_sec * 6)
 
@@ -450,8 +433,105 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
     # print("time to crash:{}".format(round(runtime, 2)))
     bng.close()
     # avg_kph = float(sum(kphs)) / len(kphs)
-    plt.imshow(rearview_img)
+    # plt.imshow(rearview_img)
+    # plt.pause(0.01)
+    plt.imshow(headlight_img)
     plt.pause(0.01)
+    # results = {'pitch': round(pitch,3), 'roll':round(roll,3), "z":round(z,3), 'rearview_img':rearview_img, 'headlight_img':headlight_img}
+    return return_str
+
+def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_config=None):
+    global base_filename, default_color, default_scenario,default_spawnpoint, setpoint, steps_per_sec
+    global integral, prev_error
+    integral = 0.0
+    prev_error = 0.0
+
+    # setup DNN model + weights
+    m = Model()
+    model = m.define_model_BeamNG("BeamNGmodel-racetrack.h5")
+
+    random.seed(1703)
+    setup_logging()
+
+    beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1clean')
+    scenario = Scenario(default_scenario, 'research_test')
+    # unperturbed_vehicle = Vehicle('unperturbed_vehicle', model=vehicle_model,
+    #                   licence='SAFE', color='Red')
+    # unperturbed_vehicle = setup_sensors(unperturbed_vehicle)
+    vehicle = Vehicle('ego_vehicle', model=vehicle_model,
+                      licence='EGO', color=default_color)
+    vehicle = setup_sensors(vehicle)
+    spawn = get_spawn_point(default_scenario, default_spawnpoint)
+    scenario.add_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'])
+    temp = copy.deepcopy(spawn['pos'])
+    temp = [temp[0]+lanewidth, temp[1]+lanewidth, temp[2]]
+    # scenario.add_vehicle(unperturbed_vehicle, pos=temp, rot=None, rot_quat=spawn['rot_quat'])
+
+    # Compile the scenario and place it in BeamNG's map folder
+    scenario.make(beamng)
+    bng = beamng.open(launch=True)
+
+    #bng.hide_hud()
+    bng.set_deterministic()  # Set simulator to be deterministic
+    bng.set_steps_per_second(steps_per_sec)
+
+    # Load and start the scenario
+    bng.load_scenario(scenario)
+    bng.start_scenario()
+    #bng.spawn_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'], partConfig=parts_config)
+
+    # Put simulator in pause awaiting further inputs
+    bng.pause()
+    assert vehicle.skt
+    bng.resume()
+
+    # perturb vehicle
+    vehicle.deflate_tires(deflation_pattern)
+    bng.step(steps_per_sec * 6)
+    vehicle.update_vehicle()
+    damage = 0; runtime = 0
+    while damage <= 0:
+        vehicle.control
+        sensors = bng.poll_sensors(vehicle)
+        headlight_img = sensors['headlight_cam']['colour'].convert('RGB')
+        steering = float(prediction[0][0]) #random.uniform(-1.0, 1.0)
+        vehicle.control(throttle=throttle, steering=steering, brake=brake)
+        return_str = '\nPERTURBED headlight_cam INFO:'
+        print('\nPERTURBED headlight_cam INFO:')
+        temp = bng.poll_sensors(vehicle)['headlight_cam']
+        for key in temp:
+            if key == 'rotation':
+                degs = euler_from_quaternion(temp[key][0], temp[key][1], temp[key][2], temp[key][3])
+                return_str = "{}\nquaternions {}".format(return_str, temp[key])
+                return_str = "{}\n{} {}".format(return_str, key, [round(i, 3) for i in degs])
+                print(key, degs)
+            elif key != "colour" and key != "annotation" and key != "depth":
+                return_str = "{}\n{} {}".format(return_str, key, temp[key])
+                print(key, temp[key])
+        print('\nPERTURBED rearview_cam INFO:')
+        return_str = "{}\nPERTURBED rearview_cam INFO:".format(return_str)
+        # temp = bng.poll_sensors(vehicle)['rearview_cam']
+        for key in temp:
+            if key == 'rotation':
+                degs = euler_from_quaternion(temp[key][0], temp[key][1], temp[key][2], temp[key][3])
+                return_str = "{}\nquaternions {}".format(return_str, temp[key])
+                return_str = "{}\n{} {}".format(return_str, key, [round(i, 3) for i in degs])
+                print(key, degs)
+            elif key != "colour" and key != "annotation" and key != "depth":
+                return_str = "{}\n{} {}".format(return_str, key, temp[key])
+                print(key, temp[key])
+        # rearview_img = bng.poll_sensors(vehicle)['rearview_cam']['colour'].convert('RGB')
+        headlight_img = sensors['headlight_cam']['colour'].convert('RGB')
+        bng.step(1)
+        damage = sensors['damage']['damage']
+        runtime = sensors['timer']['time']
+
+    #     print("runtime:{}".format(round(runtime, 2)))
+    print("time to crash:{} damage:{}".format(round(runtime, 2), damage))
+    bng.close()
+    # avg_kph = float(sum(kphs)) / len(kphs)
+    # plt.imshow(rearview_img)
+    # plt.pause(0.01)
     plt.imshow(headlight_img)
     plt.pause(0.01)
     # results = {'pitch': round(pitch,3), 'roll':round(roll,3), "z":round(z,3), 'rearview_img':rearview_img, 'headlight_img':headlight_img}
