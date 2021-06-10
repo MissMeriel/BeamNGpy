@@ -17,8 +17,10 @@ import scipy.misc
 import copy
 from DAVE2 import Model
 import statistics, math
-import json
+import json, csv
 from scipy.spatial.transform import Rotation as R
+from ast import literal_eval
+from scipy import interpolate
 
 # globals
 default_color = 'White' #'Red'
@@ -30,7 +32,7 @@ prev_error = 0.0
 setpoint = 40 #50.0 #53.3 #https://en.wikipedia.org/wiki/Speed_limits_by_country
 lanewidth = 3.75 #2.25
 centerline = []
-steps_per_sec = 36
+steps_per_sec = 10 #100 # 36
 
 def spawn_point(scenario_locale, spawn_point ='default'):
     global lanewidth
@@ -123,7 +125,6 @@ def spawn_point(scenario_locale, spawn_point ='default'):
             return {'pos':(262.328, -35.933, 42.5965), 'rot': None, 'rot_quat':(-0.010505940765142, 0.029969356954098, -0.44812294840813, 0.89340770244598)}
         elif spawn_point == "racetrackcurves":
             return {'pos':(215.912,-243.067,45.8604), 'rot': None, 'rot_quat':(0.029027424752712,0.022241719067097,0.98601061105728,0.16262225806713)}
-
 
 def setup_sensors(vehicle):
     # Set up sensors
@@ -273,85 +274,214 @@ def perturb_part_config(model, var, val):
     perturbed_pc = ""
     return perturbed_pc
 
+def road_analysis(bng):
+    x_points = []; y_points = []
+    roads = bng.get_roads()
+    # colors = ['b','g','r','c','m','y','k']
+    # symbs = ['-','--','-.',':','.',',','v','o','1',]
+    # for road in roads:
+    #     road_edges = bng.get_road_edges(road)
+    #     x_temp = []
+    #     y_temp = []
+    #     dont_add = False
+    #     for edge in road_edges:
+    #         if edge['middle'][0] < 100:
+    #             dont_add = True
+    #             break
+    #         if edge['middle'][1] < -300 or edge['middle'][1] > 0:
+    #             dont_add = True
+    #             break
+    #         if not dont_add:
+    #             x_temp.append(edge['middle'][0])
+    #             y_temp.append(edge['middle'][1])
+    #     if not dont_add:
+    #         symb = '{}{}'.format(random.choice(colors), random.choice(symbs))
+    #         plt.plot(x_temp, y_temp, symb, label=road)
+    # plt.legend()
+    # plt.show()
+    # plt.pause(0.001)
+    # get relevant road
+    edges = bng.get_road_edges('7983')
+    middle = [edge['middle'] for edge in edges]
+    return middle
+
+def intake_ai_lap_poses(filename="ai_lap_data.txt"):
+    global centerline
+    lap_traj = []
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+        # lap_traj =
+        for line in lines:
+            line = line.replace("\n", "")
+            # print(line)
+            line = literal_eval(line)
+            lap_traj.append(line)
+    centerline = lap_traj
+    # plot_trajectory(lap_traj)
+    return lap_traj
+
+def create_ai_line(bng, filename="ai_lap_data.txt"):
+    line = []; points = []; point_colors = []; spheres = []; sphere_colors = []
+    poses = intake_ai_lap_poses(filename)
+    for i,p in enumerate(poses):
+        if p[1] > -50:
+            p[1] += 3
+        if p[0] > 300:
+            p[0] += 3
+        if p[1] < -225:
+            p[0] -= 3
+        if i % 5 == 0:
+            line.append({"x":p[0], "y":p[1], "z":p[2], "t":0.5 * i})
+            points.append(p)
+            point_colors.append([0, 1, 0, 0.1])
+            spheres.append([p[0], p[1], p[2], 0.25])
+            sphere_colors.append([np.sin(np.radians(10)), 0, 0, 0.8])
+    bng.add_debug_line(points, point_colors,
+                       spheres=spheres, sphere_colors=sphere_colors,
+                       cling=True, offset=1)
+    return line, bng
+
+def create_ai_line_from_centerline(bng):
+    line = []; points = []; point_colors = []; spheres = []; sphere_colors = []
+    poses = intake_ai_lap_poses("frankenstein_lap_data.txt")
+    # s = interpolate.InterpolatedUnivariateSpline([p[0] for p in poses], [p[1] for p in poses])
+    count = 1
+    for i,p in enumerate(poses):
+        # interpolate
+        # y_interp = scipy.interpolate.interp1d([p[0], poses[i+1][0]], [p[1], poses[i+1][1]])
+        # num = abs(int(poses[i+1][0] - p[0]))
+        # xs = np.linspace(p[0], poses[i+1][0], num=num, endpoint=True)
+        # ys = y_interp(xs)
+        # for x,y in zip(xs,ys):
+        line.append({"x":p[0], "y":p[1], "z":p[2], "t":.1 * count})
+        count += 1
+        points.append([p[0], p[1], p[2]])
+        point_colors.append([0, 1, 0, 0.1])
+        spheres.append([p[0], p[1], p[2], 0.25])
+        sphere_colors.append([1, 0, 0, 0.8])
+    bng.add_debug_line(points, point_colors,
+                       spheres=spheres, sphere_colors=sphere_colors,
+                       cling=True, offset=0.1)
+    return line, bng
+
+def create_ai_line_from_road( spawn, bng):
+    line = []; points = []; point_colors = []; spheres = []; sphere_colors = []
+    middle = road_analysis(bng)
+    middle_end = middle[:3]
+    middle = middle[3:]
+    middle.extend(middle_end)
+    traj = []
+    with open("centerline_lap_data.txt", 'w') as f:
+        for i,p in enumerate(middle[:-1]):
+            f.write("{}\n".format(p))
+            # interpolate at 1m distance
+            if distance(p, middle[i+1]) > 1:
+                y_interp = scipy.interpolate.interp1d([p[0], middle[i+1][0]], [p[1], middle[i+1][1]])
+                num = abs(int(middle[i+1][0] - p[0]))
+                xs = np.linspace(p[0], middle[i+1][0], num=num, endpoint=True)
+                ys = y_interp(xs)
+                for x,y in zip(xs,ys):
+                    traj.append([x,y])
+                    line.append({"x":x, "y":y, "z":p[2], "t":i * 10})
+                    points.append([x, y, p[2]])
+                    point_colors.append([0, 1, 0, 0.1])
+                    spheres.append([x, y, p[2], 0.25])
+                    sphere_colors.append([1, 0, 0, 0.8])
+            else:
+                traj.append([p[0],p[1]])
+                line.append({"x": p[0], "y": p[1], "z": p[2], "t": i * 10})
+                points.append([p[0], p[1], p[2]])
+                point_colors.append([0, 1, 0, 0.1])
+                spheres.append([p[0], p[1], p[2], 0.25])
+                sphere_colors.append([1, 0, 0, 0.8])
+            plot_trajectory(traj, "Points on Script So Far")
+    print("points in centerline:{}".format(len(middle)))
+    # ai_line = create_ai_line(bng)
+    # print("points in ai line:{}".format(len(ai_line)))
+    print("spawn point:{}".format(spawn))
+    print("beginning of script:{}".format(middle[0]))
+    plot_trajectory(traj, "Points on Script (Final)")
+    bng.add_debug_line(points, point_colors,
+                       spheres=spheres, sphere_colors=sphere_colors,
+                       cling=True, offset=0.1)
+    return line, bng
+
 def run_scenario_ai_version(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_config='vehicles/hopper/custom.pc'):
-    global base_filename, default_color, default_scenario, default_spawnpoint, setpoint, steps_per_sec
-    global prev_error
+    global base_filename, default_color, default_scenario, default_spawnpoint, setpoint, steps_per_sec, prev_error
 
     random.seed(1703)
     setup_logging()
 
-    beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1clean')
+    home = 'H:/BeamNG.research.v1.7.0.1untouched/BeamNG.research.v1.7.0.1' #'H:/BeamNG.research.v1.7.0.1clean' #'H:/BeamNG.tech.v0.21.3.0' #
+    beamng = BeamNGpy('localhost', 64256, home=home) #, user='H:/BeamNG.research')
     scenario = Scenario(default_scenario, 'research_test')
     vehicle = Vehicle('ego_vehicle', model=vehicle_model, licence='AI', color=default_color)
     vehicle = setup_sensors(vehicle)
     spawn = spawn_point(default_scenario, default_spawnpoint)
-    # scenario.add_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'])
-
+    scenario.add_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'])
 
     # Compile the scenario and place it in BeamNG's map folder
     scenario.make(beamng)
-
     # Start BeamNG and enter the main loop
     bng = beamng.open(launch=True)
-
     bng.set_deterministic()  # Set simulator to be deterministic
     bng.set_steps_per_second(steps_per_sec)  # With 100hz temporal resolution
-
     # Load and start the scenario
     bng.load_scenario(scenario)
     bng.start_scenario()
 
     # create vehicle to be chased
-    chase_vehicle = Vehicle('chase_vehicle', model='miramar', licence='CHASEE', color='Red')
-    bng.spawn_vehicle(chase_vehicle, pos=(469.784, 346.391, 144.982), rot=None,
-                      rot_quat=(-0.0037852677050978, -0.0031219546217471, -0.78478640317917, 0.61974692344666))
-
-    bng.spawn_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'], partConfig=parts_config)
+    # chase_vehicle = Vehicle('chase_vehicle', model='miramar', licence='CHASEE', color='Red')
+    # bng.spawn_vehicle(chase_vehicle, pos=(469.784, 346.391, 144.982), rot=None,
+    #                   rot_quat=(-0.0037852677050978, -0.0031219546217471, -0.78478640317917, 0.61974692344666))
+    # bng.spawn_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'], partConfig=parts_config)
 
     # Put simulator in pause awaiting further inputs
     bng.pause()
     assert vehicle.skt
-    #bng.resume()
+    bng.resume()
+    ai_line, bng = create_ai_line_from_road(spawn, bng)
+    # ai_line, bng = create_ai_line_from_centerline(bng)
+    # ai_line, bng = create_ai_line(bng)
+    vehicle.ai_set_script(ai_line, cling=True)
 
-    # perturb vehicle
-    print("vehicle position before deflation via beamstate:{}".format(vehicle.get_object_position()))
-    print("vehicle position before deflation via vehicle state:{}".format(vehicle.state))
-    image = bng.poll_sensors(vehicle)['front_cam']['colour'].convert('RGB')
-    plt.imshow(image)
-    plt.pause(0.01)
-    vehicle.deflate_tires(deflation_pattern)
-    bng.step(steps_per_sec * 6)
-    vehicle.update_vehicle()
-    # print("vehicle position after deflation via beamstate:{}".format(vehicle.get_object_position()))
-    # print("vehicle position after deflation via vehicle state:{}".format(vehicle.state))
     pitch = vehicle.state['pitch'][0]
     roll = vehicle.state['roll'][0]
     z = vehicle.state['pos'][2]
     image = bng.poll_sensors(vehicle)['front_cam']['colour'].convert('RGB')
-    plt.imshow(image)
-    plt.pause(0.01)
-    bng.resume()
+    # bng.resume()
 
-    vehicle.ai_set_mode('chase')
-    vehicle.ai_set_target('chase_vehicle')
-    vehicle.ai_drive_in_lane(True)
+    # vehicle.ai_set_mode('chase')
+    # vehicle.ai_set_target('chase_vehicle')
+    # vehicle.ai_set_mode("traffic")
+    # vehicle.ai_set_speed(12, mode='set')
+    # vehicle.ai_drive_in_lane(True)
+
     damage_prev = None
-    runtime = 0.0
-    traj = []; kphs = []
-    for _ in range(650):
-        image = bng.poll_sensors(vehicle)['front_cam']['colour'].convert('RGB')
-        damage = bng.poll_sensors(vehicle)['damage']
-        wheelspeed = bng.poll_sensors(vehicle)['electrics']['wheelspeed']
+    runtime = 0.0; traj = []; kphs = []
+    # with open("ai_lap_data.txt", 'w') as f:
+    for _ in range(1024):
+        sensors = bng.poll_sensors(vehicle)
+        image = sensors['front_cam']['colour'].convert('RGB')
+        damage = sensors['damage']
+        wheelspeed = sensors['electrics']['wheelspeed']
         new_damage = diff_damage(damage, damage_prev)
         damage_prev = damage
-        runtime = bng.poll_sensors(vehicle)['timer']['time']
+        runtime = sensors['timer']['time']
         vehicle.update_vehicle()
         traj.append(vehicle.state['pos'])
+        # f.write("{}\n".format(vehicle.state['pos']))
         kphs.append(ms_to_kph(wheelspeed))
         if new_damage > 0.0:
             break
-        bng.step(5)
+        # if distance(spawn['pos'], vehicle.state['pos']) < 3 and sensors['timer']['time'] > 90:
+        #     reached_start = True
+        #     plt.imshow(image)
+        #     plt.show()
+        #     break
+        bng.step(1)
     bng.close()
+    plot_trajectory(traj, "AI Lap")
     results = {'runtime': round(runtime,3), 'damage': damage, 'kphs':kphs, 'traj':traj, 'pitch': round(pitch,3), 'roll':round(roll,3), "z":round(z,3), 'final_img':image }
     return results
 
@@ -364,14 +494,41 @@ def plot_input(timestamps, input, input_type):
     plt.show()
     plt.pause(0.1)
 
-def plot_trajectory(traj):
+def process_csv_for_lap_data(filename):
+    global path_to_trainingdir
+    hashmap = []
+    timestamps = []; steerings = []; throttles = []
+    with open(filename) as csvfile:
+        metadata = csv.reader(csvfile, delimiter=',')
+        next(metadata)
+        for row in metadata:
+            steerings.append(float(row[2]))
+            throttles.append(float(row[3]))
+            timestamps.append(float(row[1]))
+            # imgfile = row[0].replace("\\", "/")
+            # hashmap[i] = row[1:]
+    return timestamps, steerings, throttles
+
+def plot_one_lap_of_steering():
+    filename = 'H:/BeamNG_DAVE2_racetracks_all/training_images_industrial-racetrackstartinggate0/data.csv'
+    x,y_steer, y_throttle = process_csv_for_lap_data(filename)
+    plt.plot(x[:1492], y_steer[:1492])
+    plt.title("Steering over one lap")
+    plt.show()
+    plt.pause(0.01)
+    print(len([i for i in y_steer if i > 0.1]))
+
+def plot_trajectory(traj, title="Trajectory"):
+    global centerline
     x = [t[0] for t in traj]
     y = [t[1] for t in traj]
-    plt.plot(x,y)
+    plt.plot(x,y, 'bo', label="AI behavior")
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
+    plt.plot([t[0] for t in centerline], [t[1] for t in centerline], 'r+', label="AI line script")
     # Set a title of the current axes.
-    plt.title('Trajectory')
+    plt.title(title)
+    plt.legend()
     # Display a figure.
     plt.show()
     plt.pause(0.1)
@@ -384,8 +541,10 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
 
     # setup DNN model + weights
     sm = Model()
-    steering_model = Model().define_model_BeamNG("BeamNGmodel-racetracksteering8.h5")
-    throttle_model = Model().define_model_BeamNG("BeamNGmodel-racetrackthrottle8.h5")
+    # steering_model = Model().define_model_BeamNG("BeamNGmodel-racetracksteering8.h5")
+    # throttle_model = Model().define_model_BeamNG("BeamNGmodel-racetrackthrottle8.h5")
+    dual_model = sm.define_dual_model_BeamNG()
+    dual_model = sm.load_weights("BeamNGmodel-racetrackdualcomparison10K.h5")
 
     random.seed(1703)
     setup_logging()
@@ -403,16 +562,12 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
 
     # Start BeamNG and enter the main loop
     bng = beamng.open(launch=True)
-
     #bng.hide_hud()
     bng.set_deterministic()  # Set simulator to be deterministic
     bng.set_steps_per_second(steps_per_sec)  # With 60hz temporal resolution
-
-    # Load and start the scenario
     bng.load_scenario(scenario)
     bng.start_scenario()
     # bng.spawn_vehicle(vehicle, pos=spawn['pos'], rot=None, rot_quat=spawn['rot_quat'], partConfig=parts_config)
-
     # Put simulator in pause awaiting further inputs
     bng.pause()
     assert vehicle.skt
@@ -422,8 +577,8 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
     print("vehicle position before deflation via beamstate:{}".format(vehicle.get_object_position()))
     print("vehicle position before deflation via vehicle state:{}".format(vehicle.state))
     image = bng.poll_sensors(vehicle)['front_cam']['colour'].convert('RGB')
-    plt.imshow(image)
-    plt.pause(0.01)
+    # plt.imshow(image)
+    # plt.pause(0.01)
     vehicle.deflate_tires(deflation_pattern)
     bng.step(steps_per_sec * 6)
     vehicle.update_vehicle()
@@ -433,35 +588,38 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
     roll = vehicle.state['roll'][0]
     z = vehicle.state['pos'][2]
     image = bng.poll_sensors(vehicle)['front_cam']['colour'].convert('RGB')
-    plt.imshow(image)
-    plt.pause(0.01)
+    # plt.imshow(image)
+    # plt.pause(0.01)
 
     # bng.resume()
-    #vehicle.break_all_breakgroups()
-    #vehicle.break_hinges()
-    #vehicle_loadfile = 'vehicles/etk800/fronttires_0psi.pc'
-    #vehicle_loadfile = 'vehicles/etk800/backtires_0psi.pc'
-    # vehicle_loadfile = 'vehicles/etk800/chassis_forcefeedback201.pc'
-    #vehicle.load_pc(vehicle_loadfile, False)
+    # vehicle.break_all_breakgroups()
+    # vehicle.break_hinges()
 
     wheelspeed = 0.0; throttle = 0.0; prev_error = setpoint; damage_prev = None; runtime = 0.0
     kphs = []; traj = []; pitches = []; rolls = []; steering_inputs = []; throttle_inputs = []; timestamps = []
     damage = None
     final_img = None
     # Send random inputs to vehice and advance the simulation 20 steps
-    for _ in range(1024):
+    overall_damage = 0.0
+    total_loops = 0; total_imgs = 0; total_predictions = 0
+    while overall_damage <= 0:
         # collect images
         image = bng.poll_sensors(vehicle)['front_cam']['colour'].convert('RGB')
+        total_imgs += 1
         img = sm.process_image(np.asarray(image))
-        steering_prediction = steering_model.predict(img)
-        throttle_prediction = throttle_model.predict(img)
+        dual_prediction = dual_model.predict(img)
+        # steering_prediction = steering_model.predict(img)
+        # throttle_prediction = throttle_model.predict(img)
         runtime = bng.poll_sensors(vehicle)['timer']['time']
 
         # control params
         kph = ms_to_kph(wheelspeed)
         brake = 0
-        steering = float(steering_prediction[0][0]) #random.uniform(-1.0, 1.0)
-        throttle = float(throttle_prediction[0][0])
+        # steering = float(steering_prediction[0][0]) #random.uniform(-1.0, 1.0)
+        # throttle = float(throttle_prediction[0][0])
+        steering = float(dual_prediction[0][0]) #random.uniform(-1.0, 1.0)
+        throttle = float(dual_prediction[0][1])
+        total_predictions += 1
         if runtime < 10:
             throttle = throttle_PID(kph, dt)
             if throttle > 1:
@@ -481,6 +639,7 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
         wheelspeed = bng.poll_sensors(vehicle)['electrics']['wheelspeed']
 
         damage = bng.poll_sensors(vehicle)['damage']
+        overall_damage = damage["damage"]
         new_damage = diff_damage(damage, damage_prev)
         damage_prev = damage
         vehicle.update_vehicle()
@@ -488,12 +647,14 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
         pitches.append(vehicle.state['pitch'][0])
         rolls.append(vehicle.state['roll'][0])
 
-
         kphs.append(ms_to_kph(wheelspeed))
+
+        total_loops += 1
+
         if new_damage > 0.0:
             final_img = image
             break
-        bng.step(1)
+        bng.step(1, wait=True)
 
         # if distance(spawn_pt['pos'], vehicle.state['pos']) < 5 and sensors['timer']['time'] > 10:
         #     reached_start = True
@@ -507,11 +668,15 @@ def run_scenario(vehicle_model='etk800', deflation_pattern=[0,0,0,0], parts_conf
     plt.pause(0.01)
     plot_input(timestamps, steering_inputs, "Steering")
     plot_input(timestamps, throttle_inputs, "Throttle")
-    plot_trajectory(traj)
+    plot_input(timestamps, kphs, "KPHs")
     print("Number of steering_inputs:", len(steering_inputs))
     print("Number of throttle inputs:", len(throttle_inputs))
-    results = {'runtime': round(runtime,3), 'damage': damage, 'kphs':kphs, 'traj':traj, 'pitch': round(pitch,3), 'roll':round(roll,3), "z":round(z,3), 'final_img':final_img }
-
+    results = "Total loops: {} \ntotal images: {} \ntotal predictions: {} \nexpected predictions ={}*{}={}".format(total_loops, total_imgs, total_predictions, round(runtime,3), steps_per_sec, round(runtime*steps_per_sec,3))
+    print(results)
+    results = {'runtime': round(runtime,3), 'damage': damage, 'kphs':kphs, 'traj':traj, 'pitch': round(pitch,3),
+               'roll':round(roll,3), "z":round(z,3), 'final_img':final_img,
+               'total_predictions': total_predictions, 'expected_predictions':round(runtime*steps_per_sec,3)
+               }
     return results
 
 def get_distance_traveled(traj):
@@ -544,11 +709,9 @@ def add_barriers(scenario):
                                 shape='levels/Industrial/art/shapes/misc/concrete_road_barrier_a.dae')
             scenario.add_object(ramp)
 
-
 def main():
     global base_filename, default_color, default_scenario, setpoint, integral
-    global prev_error
-    global centerline
+    global prev_error, centerline
 
     deflation_patterns = [[0,0,0,0]
                           # [1,1,1,1],
@@ -568,7 +731,8 @@ def main():
                     # 'vehicles/hopper/hoppercustom_15x9front17x9rear.pc',
                     # 'vehicles/hopper/hoppercrawler_15x7silverrear.pc'
                     ]
-    AI = [False]
+    intake_ai_lap_poses()
+    AI = [True, False]
     all_results = {}
     outputstr = ''
     with open('H:/temp/pitchtraces.txt', 'w') as f:
@@ -576,22 +740,26 @@ def main():
             for v in vehicles:
                 for df in deflation_patterns:
                     for pc in partsconfigs:
-                    # centerline = run_scenario_ai_version(vehicle_model='hopper', deflation_pattern=df)
-                    # print("centerline:{}".format(centerline))
                         r = 0; a = 0; d = 0
                         grouped_results = {}
-                        for i in range(1):
+                        for i in range(10):
                             if ai:
                                 results = run_scenario_ai_version(vehicle_model=v, deflation_pattern=df, parts_config=pc)
+                                exit()
                             else:
                                 results = run_scenario(vehicle_model=v, deflation_pattern=df, parts_config=pc)
-
                             key = '{}-{}-{}-AI:{}-{}'.format(v, df, pc, ai, i)
-                            f.write("{}:\n".format(key))
+                            plot_trajectory(results['traj'], key)
+                            rstr = ["{}:{}\n".format(k, results[k]) for k in results.keys()]
+                            outputstr = "{}\n{}\n{}".format(outputstr, key, rstr)
+                            print("outpuit string so far: {}".format(outputstr))
+                            # f.write("{}:\n".format(key))
                             results['distance'] = get_distance_traveled(results['traj'])
-                            f.write("{}\n\n".format(results))
+                            # f.write("{}\n\n".format(results))
                             all_results[key] = copy.deepcopy(results)
                             grouped_results[i] = copy.deepcopy(results)
+                        print("FINAL OUTPUT STRING:")
+                        print(outputstr)
                         outputstr = "{}\n\n{}-{}-{}-AI:{}".format(outputstr, v, df, pc, ai)
                         avgd_dist = 0; avgd_runtime = 0; avgd_pitch = 0; avgd_roll = 0; avgd_z = 0; avgd_damage = 0; avgd_damageExt = 0
                         print(grouped_results)
@@ -608,7 +776,6 @@ def main():
                                  elif k == 'damage':
                                      avgd_damage += grouped_results[key][k]['damage'] / len(grouped_results.keys())
                                      avgd_damageExt += grouped_results[key][k]['damage'] / len(grouped_results.keys())
-
 
                         outputstr = "{}\nAVG DIST:{}\nAVG RUNTIME:{}\nAVG PITCH:{}\nAVG ROLL:{}\nAVG Z:{}\nAVG DAMAGE:{}\nAVG DAMAGE EXT:{}".format(outputstr, avgd_dist, avgd_runtime, math.degrees(avgd_pitch), math.degrees(avgd_roll), avgd_z, avgd_damage, round(avgd_damageExt, 3))
                         # key = '{}-{}-{}-avg'.format(v, df, pc)

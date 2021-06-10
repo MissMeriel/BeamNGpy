@@ -15,7 +15,7 @@ SIZE = 1024
 def main():
     setup_logging()
 
-    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.0')
+    beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1untouched/BeamNG.research.v1.7.0.1')
     scenario = Scenario('west_coast_usa', 'ai_sine')
 
     vehicle = Vehicle('ego_vehicle', model='etk800', licence='AI')
@@ -84,7 +84,7 @@ def main():
                            cling=True, offset=0.1)
 
         vehicle.ai_set_script(script)
-        vehicle.send()
+        # vehicle.send()
 
         while True:
             bng.step(60)

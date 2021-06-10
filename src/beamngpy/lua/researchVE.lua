@@ -144,10 +144,11 @@ end
 -- Handlers
 
 local function submitInput(inputs, key)
-  -- log("E", "inside submitInput(" .. tostring(inputs) .. ", " .. tostring(key))
+   log("E", "inside submitInput(" .. tostring(inputs) .. ", " .. tostring(key))
   local val = inputs[key]
   if val ~= nil then
     input.event(key, val, 1)
+    --input.event(key, val, 0)
   end
 end
 
@@ -157,7 +158,6 @@ M.handleControl = function(msg)
   submitInput(msg, 'brake')
   submitInput(msg, 'parkingbrake')
   submitInput(msg, 'clutch')
-
   local gear = msg['gear']
   if gear ~= nil then
     drivetrain.shiftToGear(gear)
@@ -312,8 +312,11 @@ M.handleSetAiScript = function(msg)
     end
   end
 
+  -- never, alwaysReset, startReset
   ai.startFollowing(script, 0, 0, 'never')
-
+  --ai.startFollowing(script, 0, 0, 'alwaysReset')
+  ai.setScriptDebugMode("path")
+  ai.debugDraw()
   ai.stateChanged()
   rcom.sendACK(skt, 'AiScriptSet')
 end

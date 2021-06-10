@@ -299,7 +299,7 @@ class Vehicle:
         Sends a control message to the vehicle, setting vehicle inputs
         accordingly. Possible values to set are:
 
-         * ``steering``: Rotation of the steering wheel, from -1.0 to 1.0.
+         * ``steering``: Rotation of the steering wheel, from -1.0 (left) to 1.0 (right).
          * ``throttle``: Intensity of the throttle, from 0.0 to 1.0.
          * ``brake``: Intensity of the brake, from 0.0 to 1.0.
          * ``parkingbrake``: Intensity of the parkingbrake, from 0.0 to 1.0.

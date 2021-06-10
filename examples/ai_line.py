@@ -15,7 +15,7 @@ SIZE = 1024
 def main():
     setup_logging()
 
-    beamng = BeamNGpy('localhost', 64256, home='C:/Users/merie/Documents/BeamNG.research.v1.7.0.0')
+    beamng = BeamNGpy('localhost', 64256, home='H:/BeamNG.research.v1.7.0.1clean')
     scenario = Scenario('west_coast_usa', 'ai_sine')
 
     vehicle = Vehicle('ego_vehicle', model='etk800', licence='AI')

@@ -42,6 +42,7 @@ PROTOCOL_VERSION = 'v1.17'
 BINARIES = [
     'Bin64/BeamNG.drive.x64.exe',
     'Bin64/BeamNG.research.x64.exe',
+    'Bin64/BeamNG.tech.x64.exe'
 ]
 
 
@@ -151,6 +152,8 @@ class BeamNGpy:
         user = Path.home() / 'Documents'
         if '.research' in self.binary:
             user = user / 'BeamNG.research'
+        elif '.tech' in self.binary:
+            user = user / 'BeamNG.tech'
         else:
             user = user / 'BeamNG.drive'
         log.debug("user: {}".format(user))
@@ -173,7 +176,6 @@ class BeamNGpy:
             if binary.exists():
                 choice = binary
                 break
-
         if not choice:
             raise BNGError('No BeamNG binary found in BeamNG home. Make '
                            'sure any of these exist in the BeamNG home '
